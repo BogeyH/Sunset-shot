@@ -50,14 +50,14 @@ window.onload = () => {
     if (scene === 'tee') {
       sceneEl.innerText = COPY.intro_text;
       choicesEl.innerHTML = `
-        <button onclick="startShot('driver')">${COPY.driver}</button>
-        <button onclick="startShot('3wood')">${COPY['3wood']}</button>
+        <button onclick="startSwing('driver')">${COPY.driver}</button>
+        <button onclick="startSwing('3wood')">${COPY['3wood']}</button>
       `;
     } else if (scene === 'approach') {
       sceneEl.innerText = COPY.approach_text;
       choicesEl.innerHTML = `
-        <button onclick="startShot('iron')">${COPY.iron}</button>
-        <button onclick="startShot('wedge')">${COPY.wedge}</button>
+        <button onclick="startSwing('iron')">${COPY.iron}</button>
+        <button onclick="startSwing('wedge')">${COPY.wedge}</button>
       `;
     } else if (scene === 'putt') {
       sceneEl.innerText = COPY.putt_text;
@@ -70,39 +70,48 @@ window.onload = () => {
     }
   }
 
-  function startShot(club) {
+  function startSwing(club) {
     gameState.currentClub = club;
-    sceneEl.innerText = `Set your angle (left/right)...`;
-    let inputStage = 'angle';
+    sceneEl.innerText = "Set your angle...";
+    let phase = 'angle';
+    let meter = 0;
+    let dir = 1;
     let angle = 0;
     let power = 0;
-    let progress = 0;
-    let direction = 1;
 
-    const meter = setInterval(() => {
-      progress += 2 * direction;
-      if (progress >= 100 || progress <= 0) direction *= -1;
-      sceneEl.innerText = `${inputStage === 'angle' ? 'Angle' : 'Power'}: ${progress}`;
+    const meterDisplay = document.createElement('div');
+    meterDisplay.style.margin = "10px";
+    meterDisplay.style.fontSize = "20px";
+    meterDisplay.style.fontFamily = "monospace";
+    meterDisplay.id = "meter-display";
+    gameContainer.appendChild(meterDisplay);
+
+    const interval = setInterval(() => {
+      meter += dir * 2;
+      if (meter >= 100 || meter <= 0) dir *= -1;
+      meterDisplay.innerText = `[ ${"#".repeat(meter / 10)}${" ".repeat(10 - meter / 10)} ]`;
     }, 30);
 
-    const confirmBtn = document.createElement('button');
-    confirmBtn.textContent = "Stop";
-    confirmBtn.onclick = () => {
-      if (inputStage === 'angle') {
-        angle = progress - 50; // range from -50 to +50
-        inputStage = 'power';
-        progress = 0;
-        direction = 1;
-        sceneEl.innerText = `Now set your power...`;
+    const stopBtn = document.createElement('button');
+    stopBtn.textContent = "Stop";
+    stopBtn.onclick = () => {
+      if (phase === 'angle') {
+        angle = meter - 50;
+        phase = 'power';
+        meter = 0;
+        dir = 1;
+        sceneEl.innerText = "Set your power...";
       } else {
-        power = progress / 100; // normalized
-        clearInterval(meter);
-        confirmBtn.remove();
+        power = meter / 100;
+        clearInterval(interval);
+        stopBtn.remove();
+        meterDisplay.remove();
         takeShot(club, angle, power);
       }
     };
+
     choicesEl.innerHTML = '';
-    choicesEl.appendChild(confirmBtn);
+    choicesEl.appendChild(stopBtn);
   }
 
   function takeShot(club, angle, power) {
