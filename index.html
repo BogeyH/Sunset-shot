@@ -6,17 +6,17 @@
   <title>Bogey Hound: Sunset Shot</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
-    body, html {margin:0; padding:0; overflow:hidden; background:#000; font-family:'Space Grotesk',sans-serif;}
-    canvas {display:block; touch-action:none;}
-    .brand-logo {position:absolute; top:20px; left:50%; transform:translateX(-50%); background:#f4e5c2; color:#2c5530; padding:8px 16px; border-radius:20px; font-weight:700; font-size:16px;}
-    #ui {position:absolute; top:60px; left:20px; color:#f4e5c2; font-weight:500;}
-    .button {background:#f4e5c2; color:#2c5530; border:none; padding:12px 18px; margin:6px; cursor:pointer; border-radius:25px; font-size:14px; font-weight:600; transition:all .3s; text-align:left;}
-    .button small {display:block; font-size:12px; color:#2c5530; opacity:0.8;}
-    .button:hover {background:#e8d5a8; transform:translateY(-2px);}
-    #powerBar {position:absolute; bottom:80px; left:50%; transform:translateX(-50%); width:250px; height:25px; background:rgba(255,255,255,0.2); border:2px solid #f4e5c2; border-radius:15px; display:none; overflow:hidden;}
-    #powerFill {width:0; height:100%; background:linear-gradient(90deg,#4CAF50,#FFC107,#f44336); transition:width .1s; border-radius:12px;}
-    #commentary {position:absolute; bottom:140px; left:50%; transform:translateX(-50%); background:rgba(44,85,48,0.9); color:#f4e5c2; padding:12px 16px; border-radius:15px; max-width:300px; font-weight:500; white-space:pre-wrap; opacity:0; transition:opacity .3s; text-align:center;}
-    @media(max-width:768px){#ui,#commentary{left:10px;right:10px;transform:none;} #powerBar{width:200px;bottom:60px;}}
+    body, html { margin:0; padding:0; overflow:hidden; background:#000; font-family:'Space Grotesk',sans-serif; }
+    canvas { display:block; touch-action:none; }
+    .brand-logo { position:absolute; top:20px; left:50%; transform:translateX(-50%); background:#f4e5c2; color:#2c5530; padding:8px 16px; border-radius:20px; font-weight:700; font-size:16px; }
+    #ui { position:absolute; top:60px; left:20px; color:#f4e5c2; font-weight:500; }
+    .button { background:#f4e5c2; color:#2c5530; border:none; padding:12px 18px; margin:6px; cursor:pointer; border-radius:25px; font-size:14px; font-weight:600; transition:all .3s; text-align:left; }
+    .button small { display:block; font-size:12px; color:#2c5530; opacity:0.8; }
+    .button:hover { background:#e8d5a8; transform:translateY(-2px); }
+    #powerBar { position:absolute; bottom:80px; left:50%; transform:translateX(-50%); width:250px; height:25px; background:rgba(255,255,255,0.2); border:2px solid #f4e5c2; border-radius:15px; display:none; overflow:hidden; }
+    #powerFill { width:0; height:100%; background:linear-gradient(90deg,#4CAF50,#FFC107,#f44336); transition:width .1s; border-radius:12px; }
+    #commentary { position:absolute; bottom:140px; left:50%; transform:translateX(-50%); background:rgba(44,85,48,0.9); color:#f4e5c2; padding:12px 16px; border-radius:15px; max-width:300px; font-weight:500; white-space:pre-wrap; opacity:0; transition:opacity .3s; text-align:center; }
+    @media(max-width:768px){ #ui,#commentary{left:10px;right:10px;transform:none;} #powerBar{width:200px;bottom:60px;} }
   </style>
 </head>
 <body>
@@ -28,83 +28,89 @@
   <script>
     (() => {
       const canvas = document.getElementById('game'),
-            ctx = canvas.getContext('2d'),
-            ui = document.getElementById('ui'),
-            powerBar = document.getElementById('powerBar'),
+            ctx    = canvas.getContext('2d'),
+            ui     = document.getElementById('ui'),
+            powerBar  = document.getElementById('powerBar'),
             powerFill = document.getElementById('powerFill'),
-            comm = document.getElementById('commentary');
+            comm      = document.getElementById('commentary');
 
-      // Clubs and encouragement
       const clubs = [
-        {name:'Driver',dist:250},
-        {name:'3-Wood',dist:200},
-        {name:'7-Iron',dist:150},
-        {name:'Wedge',dist:100},
-        {name:'Putter',dist:50}
+        { name:'Driver', dist:250 },
+        { name:'3-Wood', dist:200 },
+        { name:'7-Iron', dist:150 },
+        { name:'Wedge', dist:100 },
+        { name:'Putter', dist:50 }
       ];
       const encourage = [
-        'Feel the green. Trust the read.',
-        'All swings welcome here.',
-        'Just keep it moving.',
-        'Nice and easy does it.'
+        'Chill roll—good rhythm.',
+        'Easy does it, that was smooth.',
+        'Nice swing, keep the vibes up.',
+        'That’s the groove.'
       ];
 
       let hole, start, tree, water;
-      let ball = {x:0,y:0,vx:0,vy:0};
-      let selected = null, isAiming=false, isPowering=false, power=0, aimAngle=0, powerDir=1;
-      let inMotion=false, shots=0;
-      let clouds=[], birds=[];
-      let powerStart=0;
+      let ball = { x:0, y:0, vx:0, vy:0 };
+      let selected = null,
+          isAiming = false,
+          isPowering = false,
+          power     = 0,
+          aimAngle  = 0,
+          powerDir  = 1;
+      let inMotion = false, shots = 0;
+      let clouds = [], birds = [];
+      let powerStart = 0;
 
       function resize() {
-        canvas.width = innerWidth;
-        canvas.height = innerHeight;
-        hole  = {x:canvas.width/2, y:80};
-        start = {x:canvas.width/2, y:canvas.height-80};
-        tree  = {x:canvas.width*0.2, y:(start.y+hole.y)/2};
-        water = {x:canvas.width*0.65, y:hole.y+100, w:canvas.width*0.3, h:80};
-        ball.x = start.x; ball.y = start.y;
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+        hole  = { x: canvas.width/2, y: 80 };
+        start = { x: canvas.width/2, y: canvas.height - 80 };
+        tree  = { x: canvas.width*0.2, y: (start.y + hole.y)/2 };
+        // water between 150 and 350 yards
+        const total = start.y - hole.y;
+        const y1    = start.y - (150/400)*total;
+        const y2    = start.y - (350/400)*total;
+        water = { x: canvas.width*0.65, y: y2, w: canvas.width*0.3, h: y1 - y2 };
+
+        ball.x = start.x;
+        ball.y = start.y;
       }
 
       function initClouds() {
         clouds = [];
-        for(let i=0;i<6;i++){
-          clouds.push({
-            x: Math.random()*canvas.width,
-            y: Math.random()*canvas.height*0.4+50,
-            s: 0.3+Math.random()*0.4,
-            r: 30+Math.random()*20
-          });
-        }
+        for(let i=0;i<6;i++) clouds.push({
+          x: Math.random()*canvas.width,
+          y: Math.random()*canvas.height*0.4 + 50,
+          s: 0.3 + Math.random()*0.4,
+          r: 30 + Math.random()*20
+        });
       }
       function initBirds() {
         birds = [];
-        for(let i=0;i<3;i++){
-          birds.push({
-            x: Math.random()*canvas.width,
-            y: 100+Math.random()*200,
-            s: 0.5+Math.random()*0.5,
-            phase: Math.random()*2*Math.PI
-          });
-        }
+        for(let i=0;i<3;i++) birds.push({
+          x: Math.random()*canvas.width,
+          y: 100 + Math.random()*200,
+          s: 0.5 + Math.random()*0.5,
+          phase: Math.random()*2*Math.PI
+        });
       }
 
       function typeText(txt, cb) {
         comm.textContent = '';
         comm.style.opacity = '1';
         let i=0;
-        (function step(){
-          if(i < txt.length){
+        (function step() {
+          if (i < txt.length) {
             comm.textContent += txt[i++];
             setTimeout(step, 40);
-          } else if(cb) cb();
+          } else if (cb) cb();
         })();
       }
       function showComment(txt, cb) {
         typeText(txt, () => {
           setTimeout(() => {
             comm.style.opacity = '0';
-            if(cb) cb();
+            if (cb) cb();
           }, 2000);
         });
       }
@@ -113,9 +119,10 @@
         const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
         ui.innerHTML = '<div style="margin-bottom:6px;color:#e8d5a8;">Choose club</div>';
         let opts;
-        if(d > 200) opts = ['Driver','3-Wood'];
-        else if(d > 150) opts = ['3-Wood','7-Iron'];
-        else if(d > 100) opts = ['7-Iron','Wedge'];
+        if (shots === 0 && d > 200) opts = ['Driver','3-Wood'];
+        else if (d > 200) opts = ['3-Wood','7-Iron'];
+        else if (d > 150) opts = ['3-Wood','7-Iron'];
+        else if (d > 100) opts = ['7-Iron','Wedge'];
         else opts = ['Putter'];
         opts.forEach(name => {
           const c = clubs.find(x => x.name === name);
@@ -126,53 +133,57 @@
           ui.appendChild(b);
         });
       }
+
       function pickClub(c) {
         selected = c;
         isAiming = true;
-        showComment(`${c.name} ready. Release to swing.`);
+        showComment(`Alright, pulling out the ${c.name}.`, null);
         ui.innerHTML = '';
       }
 
       function oscillate() {
-        if(!isPowering) return;
-        power += powerDir*2;
-        if(power >= selected.dist || power <= 0) powerDir *= -1;
+        if (!isPowering) return;
+        power += powerDir * 2;
+        if (power >= selected.dist || power <= 0) powerDir *= -1;
         powerFill.style.width = (power/selected.dist*100) + '%';
         requestAnimationFrame(oscillate);
       }
       function onDown(e) {
-        if(!isAiming || inMotion) return;
+        if (!isAiming || inMotion) return;
         isPowering = true;
-        power = 0; powerDir = 1;
+        power = 0;
+        powerDir = 1;
         powerBar.style.display = 'block';
         powerStart = Date.now();
         oscillate();
       }
       function onMove(e) {
-        if(!isAiming) return;
+        if (!isAiming) return;
         const r = canvas.getBoundingClientRect();
-        const mx = e.clientX - r.left, my = e.clientY - r.top;
-        aimAngle = selected.name !== 'Putter'
+        const mx = e.clientX - r.left,
+              my = e.clientY - r.top;
+        aimAngle = (selected.name !== 'Putter')
           ? Math.atan2(my - ball.y, mx - ball.x)
           : Math.atan2(hole.y - ball.y, hole.x - ball.x);
       }
       function onUp(e) {
-        if(!isPowering) return;
+        if (!isPowering) return;
         isPowering = false;
         powerBar.style.display = 'none';
-        if(power > 5) {
+        if (power > 5) {
           let angle = aimAngle;
-          if(selected.name !== 'Putter') {
+          if (selected.name !== 'Putter') {
             angle += Math.sin((Date.now() - powerStart)/300)*0.3;
           } else {
             angle += (Math.random()-0.5)*0.2;
           }
-          ball.vx = Math.cos(angle)*power*0.02;
-          ball.vy = Math.sin(angle)*power*0.02;
+          ball.vx = Math.cos(angle)*power*0.012; // tuned for driver full ~150 yd
+          ball.vy = Math.sin(angle)*power*0.012;
+          const shotDist = Math.round(power * 0.6);
           inMotion = true;
           shots++;
           showComment(
-            `Shot ${shots}, ${encourage[Math.floor(Math.random()*encourage.length)]}`,
+            `${selected.name} cruised ${shotDist} yd. ${encourage[Math.floor(Math.random()*encourage.length)]}`,
             showClubs
           );
           isAiming = false;
@@ -181,116 +192,90 @@
       }
 
       function update() {
-        if(inMotion) {
+        if (inMotion) {
           ball.x += ball.vx; ball.y += ball.vy;
           ball.vx *= 0.98; ball.vy *= 0.98;
-          if(Math.hypot(ball.vx, ball.vy) < 0.5
-             || (selected.name==='Putter' && ball.y < hole.y)) {
+          if (Math.hypot(ball.vx, ball.vy) < 0.5
+              || (selected.name === 'Putter' && ball.y < hole.y)) {
             inMotion = false;
             placeBall();
           }
         }
         clouds.forEach(o => {
           o.x += o.s;
-          if(o.x > canvas.width + o.r) o.x = -o.r;
+          if (o.x > canvas.width + o.r) o.x = -o.r;
         });
         birds.forEach(b => {
           b.x += b.s;
           b.phase += 0.2;
           b.y += Math.sin(b.phase);
-          if(b.x > canvas.width + 50) b.x = -50;
+          if (b.x > canvas.width + 50) b.x = -50;
         });
       }
       function placeBall() {
         const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
-        if(d < 20) return showComment('You made it! Bogey never looked so good.');
+        if (d < 20) return showComment('You sank it. Bogey never looked so good.');
         showClubs();
       }
 
       function draw() {
         const w = canvas.width, h = canvas.height;
-
         // sky
-        let sky = ctx.createLinearGradient(0,0,0,h);
+        const sky = ctx.createLinearGradient(0,0,0,h);
         sky.addColorStop(0,'#FF6B35');
         sky.addColorStop(1,'#FF8C42');
         ctx.fillStyle = sky;
         ctx.fillRect(0,0,w,h);
-
         // sun
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
         ctx.arc(w/2,120,60,0,2*Math.PI);
         ctx.fill();
-
         // clouds
-        clouds.forEach(o=>{
-          ctx.fillStyle='rgba(255,255,255,0.7)';
+        clouds.forEach(o => {
+          ctx.fillStyle = 'rgba(255,255,255,0.7)';
           ctx.beginPath();
           ctx.ellipse(o.x,o.y,o.r,o.r*0.6,0,0,2*Math.PI);
           ctx.fill();
         });
-
-        // fairway strip
-        ctx.fillStyle='#6B8E23';
+        // fairway
+        ctx.fillStyle = '#6B8E23';
         ctx.fillRect(w*0.35,0,w*0.3,h);
-
-        // bunker (~240 yd)
+        // bunker
         const by = start.y - (240/250)*(start.y - hole.y);
         const bx = w*0.35 + 0.3*w*0.3;
-        ctx.fillStyle='#DEB887';
+        ctx.fillStyle = '#DEB887';
         ctx.beginPath();
         ctx.ellipse(bx,by,50,30,0,0,2*Math.PI);
         ctx.fill();
-
-        // trees left
+        // trees
         for(let i=0;i<5;i++){
           const ty = start.y - i*((start.y-hole.y)/4);
-          ctx.fillStyle='#8B4513';
-          ctx.fillRect(w*0.35-30, ty, 10,40);
-          ctx.fillStyle='#228B22';
-          ctx.beginPath();
-          ctx.arc(w*0.35-25, ty,25,0,2*Math.PI);
-          ctx.fill();
+          ctx.fillStyle='#8B4513'; ctx.fillRect(w*0.35-30,ty,10,40);
+          ctx.fillStyle='#228B22'; ctx.beginPath(); ctx.arc(w*0.35-25,ty,25,0,2*Math.PI); ctx.fill();
         }
-
-        // beach right
+        // beach
         ctx.fillStyle='#FFEBCD';
         ctx.fillRect(w*0.65,0,w*0.35,h);
-
-        // water hazard
+        // water
         ctx.fillStyle='#4A90E2';
-        ctx.fillRect(w*0.65,hole.y+20,w*0.35,80);
-
-        // green + hole
+        ctx.fillRect(w*0.65,water.y,water.w,water.h);
+        // green
         ctx.fillStyle='#90EE90';
-        ctx.beginPath();
-        ctx.arc(hole.x,hole.y,80,0,2*Math.PI);
-        ctx.fill();
-        ctx.fillStyle='#000';
-        ctx.beginPath();
-        ctx.arc(hole.x,hole.y,8,0,2*Math.PI);
-        ctx.fill();
-
+        ctx.beginPath();ctx.arc(hole.x,hole.y,80,0,2*Math.PI);ctx.fill();
+        ctx.fillStyle='#000';ctx.beginPath();ctx.arc(hole.x,hole.y,8,0,2*Math.PI);ctx.fill();
         // ball
-        ctx.fillStyle='#FFF';
-        ctx.beginPath();
-        ctx.arc(ball.x,ball.y,8,0,2*Math.PI);
-        ctx.fill();
-
-        // aiming line
+        ctx.fillStyle='#FFF';ctx.beginPath();ctx.arc(ball.x,ball.y,8,0,2*Math.PI);ctx.fill();
+        // aim line
         if(isAiming && !inMotion){
-          ctx.strokeStyle='rgba(255,255,225,0.8)';
-          ctx.lineWidth=2;
-          ctx.beginPath();
-          ctx.moveTo(ball.x,ball.y);
-          const len = 100;
-          ctx.lineTo(ball.x+Math.cos(aimAngle)*len, ball.y+Math.sin(aimAngle)*len);
-          ctx.stroke();
+          ctx.strokeStyle='rgba(255,255,225,0.8)'; ctx.lineWidth=2;
+          ctx.beginPath(); ctx.moveTo(ball.x,ball.y);
+          const len=100;
+          ctx.lineTo(ball.x+Math.cos(aimAngle)*len, ball.y+Math.sin(aimAngle)*len); ctx.stroke();
         }
       }
 
-      // event listeners
+      // events
       canvas.addEventListener('pointerdown',onDown);
       canvas.addEventListener('pointermove',onMove);
       canvas.addEventListener('pointerup',onUp);
@@ -301,14 +286,14 @@
 
       window.addEventListener('resize',resize);
 
-      // initialize
-      resize();
-      initClouds();
-      initBirds();
-      showComment('The last hole of the day. The sun’s down. Let’s walk it in.');
+      // init
+      resize(); initClouds(); initBirds();
+      showComment("The last hole of the day. The sun's down. Let's walk it in.");
       showClubs();
       (function loop(){ update(); draw(); requestAnimationFrame(loop); })();
     })();
   </script>
 </body>
 </html>
+
+
