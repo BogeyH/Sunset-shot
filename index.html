@@ -10,7 +10,8 @@
     canvas { display:block; touch-action:none; }
     .brand-logo { position:absolute; top:20px; left:50%; transform:translateX(-50%); background:#f4e5c2; color:#2c5530; padding:8px 16px; border-radius:20px; font-weight:700; font-size:16px; }
     #ui { position:absolute; top:60px; left:20px; color:#f4e5c2; font-weight:500; }
-    .button { background:#f4e5c2; color:#2c5530; border:none; padding:12px 18px; margin:6px; cursor:pointer; border-radius:25px; font-size:14px; font-weight:600; transition:all .3s; }
+    .button { background:#f4e5c2; color:#2c5530; border:none; padding:12px 18px; margin:6px; cursor:pointer; border-radius:25px; font-size:14px; font-weight:600; transition:all .3s; text-align:left; }
+    .button small { display:block; font-size:12px; color:#2c5530; opacity:0.8; }
     .button:hover { background:#e8d5a8; transform:translateY(-2px); }
     #powerBar { position:absolute; bottom:80px; left:50%; transform:translateX(-50%); width:250px; height:25px; background:rgba(255,255,255,.2); border:2px solid #f4e5c2; border-radius:15px; display:none; overflow:hidden; }
     #powerFill { width:0; height:100%; background:linear-gradient(90deg,#4CAF50,#FFC107,#f44336); transition:width .1s; border-radius:12px; }
@@ -33,247 +34,195 @@
   const powerFill = document.getElementById('powerFill');
   const comm = document.getElementById('commentary');
 
-  // Clubs and encouragements
+  // Clubs with max distances
   const clubs = [
-    { name: 'Big Dog', dist: 400 },
-    { name: 'Fairway Friend', dist: 300 },
-    { name: 'Approach Ace', dist: 200 },
-    { name: 'Escape Artist', dist: 150 },
-    { name: 'Bump & Run', dist: 100 },
-    { name: 'Hole Hunter', dist: 80 }
+    { name:'Big Dog', dist:400 },
+    { name:'Fairway Friend', dist:300 },
+    { name:'Approach Ace', dist:200 },
+    { name:'Escape Artist', dist:150 },
+    { name:'Bump & Run', dist:100 },
+    { name:'Hole Hunter', dist:80 }
   ];
   const encourage = [
     'Feel the green, trust the read.',
-    'All swings welcome here.',
+    'All swings welcome.',
     'Just keep it moving.',
     'Nice and easy does it.'
   ];
 
-  // Game state
   let hole, start, tree, water;
-  let ball = { x: 0, y: 0, vx: 0, vy: 0 };
-  let selected = null;
-  let isAiming = false, isPowering = false, power = 0, aimAngle = 0;
-  let inMotion = false, shots = 0;
-  let clouds = [], birds = [];
+  let ball = {x:0,y:0,vx:0,vy:0};
+  let selected=null, isAiming=false, isPowering=false, power=0, aimAngle=0;
+  let inMotion=false, shots=0;
+  let clouds=[], birds=[];
   let powerStart = 0;
 
-  // Resize canvas and set landmarks
   function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    hole = { x: canvas.width / 2, y: canvas.height - 80 };
-    start = { x: canvas.width / 2, y: 80 };
-    tree = { x: canvas.width * 0.2, y: canvas.height * 0.6 };
-    water = { x: canvas.width * 0.7, y: canvas.height * 0.7, w: canvas.width * 0.25, h: 80 };
-    ball.x = start.x; ball.y = start.y;
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+    hole = { x: canvas.width/2, y: 80 };
+    start = { x: canvas.width/2, y: canvas.height - 80 };
+    tree = { x: canvas.width*0.2, y: (start.y + hole.y)/2 };
+    water = { x: canvas.width*0.65, y: hole.y + 100, w: canvas.width*0.3, h: 80 };
+    ball.x = start.x;
+    ball.y = start.y;
   }
 
-  // Initialize clouds and birds
   function initClouds() {
     clouds = [];
-    for (let i = 0; i < 6; i++) {
-      clouds.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.4 + 50, s: 0.3 + Math.random() * 0.4, r: 30 + Math.random() * 20 });
-    }
+    for(let i=0;i<6;i++) clouds.push({ x:Math.random()*canvas.width, y:Math.random()*canvas.height*0.4+50, s:0.3+Math.random()*0.4, r:30+Math.random()*20 });
   }
   function initBirds() {
     birds = [];
-    for (let i = 0; i < 3; i++) {
-      birds.push({ x: Math.random() * canvas.width, y: 100 + Math.random() * 200, s: 0.5 + Math.random() * 0.5, phase: Math.random() * 2 * Math.PI });
-    }
+    for(let i=0;i<3;i++) birds.push({ x:Math.random()*canvas.width, y:100+Math.random()*200, s:0.5+Math.random()*0.5, phase:Math.random()*2*Math.PI });
   }
 
-  // Typewriter effect
-  function typeText(text, cb) {
+  function typeText(txt,cb) {
     comm.textContent = '';
     comm.style.opacity = '1';
-    let i = 0;
-    function step() {
-      if (i < text.length) {
-        comm.textContent += text[i++];
-        setTimeout(step, 40);
-      } else if (cb) cb();
-    }
-    step();
+    let i=0;
+    (function step(){ if(i<txt.length){ comm.textContent += txt[i++]; setTimeout(step,40);} else cb&&cb();})();
   }
-  function showComment(msg) {
-    typeText(msg, () => setTimeout(() => comm.style.opacity = '0', 2000));
-  }
+  function showComment(txt){ typeText(txt,()=>setTimeout(()=>comm.style.opacity='0',2000)); }
 
-  // Show club buttons
   function showClubs() {
-    ui.innerHTML = '<div style="margin-bottom:6px; color:#e8d5a8;">Select club</div>';
-    clubs.forEach(c => {
-      const btn = document.createElement('button');
-      btn.className = 'button';
-      btn.textContent = c.name;
-      btn.onclick = () => pickClub(c);
-      ui.appendChild(btn);
+    const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
+    ui.innerHTML = '<div style="margin-bottom:6px;color:#e8d5a8;">Choose your club</div>';
+    let options;
+    if(d > 250) options = ['Big Dog','Fairway Friend'];
+    else if(d > 150) options = ['Approach Ace','Escape Artist'];
+    else if(d > 80) options = ['Escape Artist','Bump & Run'];
+    else options = ['Hole Hunter'];
+    options.forEach(name=>{
+      const c = clubs.find(c=>c.name===name);
+      const b = document.createElement('button');
+      b.className = 'button';
+      b.innerHTML = `<strong>${c.name}</strong><small>up to ${c.dist} yd</small>`;
+      b.onclick = ()=>pickClub(c);
+      ui.appendChild(b);
     });
   }
+
   function pickClub(c) {
     selected = c;
     isAiming = true;
-    showComment(c.name + ' ready. Pull back to swing.');
+    showComment(`${c.name} ready. Pull back to swing.`);
     ui.innerHTML = '';
   }
 
-  // Input handlers
   function onDown(e) {
-    if (!isAiming || inMotion) return;
-    isPowering = true;
-    power = 0;
-    powerBar.style.display = 'block';
-    powerStart = Date.now();
+    if(!isAiming||inMotion) return;
+    isPowering = true; power = 0; powerBar.style.display='block'; powerStart = Date.now();
   }
   function onMove(e) {
-    if (!isAiming) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    aimAngle = Math.atan2(my - start.y, mx - start.x);
-    if (isPowering) {
-      const d = Math.hypot(mx - start.x, my - start.y);
+    if(!isAiming) return;
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    if(selected.name==='Hole Hunter') {
+      aimAngle = Math.atan2(hole.y - ball.y, hole.x - ball.x);
+    } else {
+      aimAngle = Math.atan2(my - ball.y, mx - ball.x);
+    }
+    if(isPowering) {
+      let d = Math.hypot(mx - ball.x, my - ball.y);
       power = Math.min(selected.dist, d);
-      powerFill.style.width = (power / selected.dist * 100) + '%';
+      powerFill.style.width = (power/selected.dist*100)+'%';
     }
   }
   function onUp(e) {
-    if (!isPowering) return;
-    isPowering = false;
-    powerBar.style.display = 'none';
-    if (power > 20) {
-      const swingSpeed = (Date.now() - powerStart) / 1000 * 5;
-      const swing = Math.sin(swingSpeed) * 0.3;
-      const angle = aimAngle + swing;
-      ball.vx = Math.cos(angle) * power * 0.02;
-      ball.vy = Math.sin(angle) * power * 0.02;
-      inMotion = true;
-      shots++;
-      showComment('Shot ' + shots + ', ' + encourage[Math.floor(Math.random() * encourage.length)]);
+    if(!isPowering) return;
+    isPowering = false; powerBar.style.display='none';
+    if(power>10) {
+      let angle = aimAngle;
+      if(selected.name==='Hole Hunter') {
+        const swing = (Math.random()-0.5)*0.2;
+        angle += swing;
+      } else {
+        const swingTime = (Date.now()-powerStart)/1000*5;
+        angle += Math.sin(swingTime)*0.3;
+      }
+      ball.vx = Math.cos(angle)*power*0.02;
+      ball.vy = Math.sin(angle)*power*0.02;
+      inMotion = true; shots++;
+      showComment(`Shot ${shots}, ${encourage[Math.floor(Math.random()*encourage.length)]}`);
       isAiming = false;
       powerFill.style.width = '0%';
     }
   }
 
-  // Game loop
-  function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-  }
+  function loop() { update(); draw(); requestAnimationFrame(loop); }
   function update() {
-    if (inMotion) {
-      ball.x += ball.vx;
-      ball.y += ball.vy;
-      ball.vx *= 0.98;
-      ball.vy *= 0.98;
-      if (Math.hypot(ball.vx, ball.vy) < 0.5) {
-        inMotion = false;
-        placeBall();
+    if(inMotion) {
+      ball.x += ball.vx; ball.y += ball.vy;
+      ball.vx *= 0.98; ball.vy *= 0.98;
+      const vy = hole.y - ball.y;
+      if(Math.hypot(ball.vx,ball.vy)<0.5 || (selected.name==='Hole Hunter' && ball.y < hole.y)) {
+        inMotion=false; placeBall();
       }
     }
-    clouds.forEach(o => { o.x += o.s; if (o.x > canvas.width + o.r) o.x = -o.r; });
-    birds.forEach(b => { b.x += b.s; b.phase += 0.2; b.y += Math.sin(b.phase); if (b.x > canvas.width + 50) b.x = -50; });
+    clouds.forEach(o=>{ o.x+=o.s; if(o.x>canvas.width+o.r) o.x=-o.r; });
+    birds.forEach(b=>{ b.x+=b.s; b.phase+=0.2; b.y+=Math.sin(b.phase); if(b.x>canvas.width+50) b.x=-50; });
   }
   function placeBall() {
     const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
-    if (d < 20) return showComment('You made it!');
+    if(d<20) return showComment('You made it! Bogey never looked so good.');
     showClubs();
   }
 
-  // Draw scene
   function draw() {
-    const w = canvas.width, h = canvas.height;
+    const w=canvas.width, h=canvas.height;
     // Sky
-    const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, '#FF6B35');
-    sky.addColorStop(1, '#FF8C42');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, w, h);
+    let sky = ctx.createLinearGradient(0,0,0,h);
+    sky.addColorStop(0,'#FF6B35'); sky.addColorStop(1,'#FF8C42');
+    ctx.fillStyle = sky; ctx.fillRect(0,0,w,h);
     // Sun
-    ctx.fillStyle = '#FFD700';
-    ctx.beginPath();
-    ctx.arc(w/2, 120, 60, 0, 2 * Math.PI);
-    ctx.fill();
+    ctx.fillStyle='#FFD700'; ctx.beginPath(); ctx.arc(w/2,120,60,0,2*Math.PI); ctx.fill();
     // Clouds
-    clouds.forEach(o => {
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.beginPath();
-      ctx.ellipse(o.x, o.y, o.r, o.r * 0.6, 0, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-    // Fairway
-    ctx.fillStyle = '#6B8E23';
-    ctx.fillRect(w * 0.35, h * 0.5, w * 0.3, h * 0.5);
-    // Bunker
-    const by = h * 0.5 + 0.6 * (h * 0.5);
-    const bx = w * 0.35 + 0.3 * (w * 0.3);
-    ctx.fillStyle = '#DEB887';
-    ctx.beginPath();
-    ctx.ellipse(bx, by, 50, 30, 0, 0, 2 * Math.PI);
-    ctx.fill();
-    // Trees Left
-    for (let i = 0; i < 5; i++) {
-      const tx = w * 0.35 - 30;
-      const ty = h * 0.5 + i * 0.1 * (h * 0.5);
-      ctx.fillStyle = '#8B4513';
-      ctx.fillRect(tx, ty, 10, 40);
-      ctx.fillStyle = '#228B22';
-      ctx.beginPath();
-      ctx.arc(tx + 5, ty, 25, 0, 2 * Math.PI);
-      ctx.fill();
+    clouds.forEach(o=>{ ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(o.x,o.y,o.r,o.r*0.6,0,0,2*Math.PI); ctx.fill(); });
+    // Fairway entire vertical
+    ctx.fillStyle='#6B8E23'; ctx.fillRect(w*0.35,0,w*0.3,h);
+    // Bunker at ~240yd
+    const by = start.y - (240/400)*(start.y - hole.y);
+    const bx = w*0.35 + w*0.3*0.3;
+    ctx.fillStyle='#DEB887'; ctx.beginPath(); ctx.ellipse(bx,by,50,30,0,0,2*Math.PI); ctx.fill();
+    // Trees left
+    for(let i=0;i<5;i++){
+      const ty = start.y - i*( (start.y-hole.y)/4 );
+      ctx.fillStyle='#8B4513'; ctx.fillRect(w*0.35-30,ty,10,40);
+      ctx.fillStyle='#228B22'; ctx.beginPath(); ctx.arc(w*0.35-25,ty,25,0,2*Math.PI); ctx.fill();
     }
-    // Beach Right
-    ctx.fillStyle = '#FFEBCD';
-    ctx.fillRect(w * 0.65, h * 0.5, w * 0.35, h * 0.5);
-    // Water
-    ctx.fillStyle = '#4A90E2';
-    ctx.fillRect(w * 0.65, h * 0.6, w * 0.35, 80);
-    // Green and Hole
-    ctx.fillStyle = '#90EE90';
-    ctx.beginPath();
-    ctx.arc(hole.x, hole.y, 80, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.arc(hole.x, hole.y, 8, 0, 2 * Math.PI);
-    ctx.fill();
+    // Beach right
+    ctx.fillStyle='#FFEBCD'; ctx.fillRect(w*0.65,0,w*0.35,h);
+    // Water hazard
+    ctx.fillStyle='#4A90E2'; ctx.fillRect(w*0.65,hole.y+20,w*0.35,80);
+    // Green and hole
+    ctx.fillStyle='#90EE90'; ctx.beginPath(); ctx.arc(hole.x,hole.y,80,0,2*Math.PI); ctx.fill();
+    ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(hole.x,hole.y,8,0,2*Math.PI); ctx.fill();
     // Ball
-    ctx.fillStyle = '#FFF';
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, 8, 0, 2 * Math.PI);
-    ctx.fill();
+    ctx.fillStyle='#FFF'; ctx.beginPath(); ctx.arc(ball.x,ball.y,8,0,2*Math.PI); ctx.fill();
     // Aiming line
-    if (isAiming && !inMotion) {
-      ctx.strokeStyle = 'rgba(255,255,225,0.8)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(ball.x, ball.y);
-      const len = 100;
-      const ex = ball.x + Math.cos(aimAngle) * len;
-      const ey = ball.y + Math.sin(aimAngle) * len;
-      ctx.lineTo(ex, ey);
-      ctx.stroke();
+    if(isAiming && !inMotion) {
+      ctx.strokeStyle='rgba(255,255,225,0.8)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(ball.x,ball.y);
+      const len=100;
+      const ex=ball.x+Math.cos(aimAngle)*len;
+      const ey=ball.y+Math.sin(aimAngle)*len;
+      ctx.lineTo(ex,ey); ctx.stroke();
     }
   }
 
-  // Event listeners
-  canvas.addEventListener('pointerdown', onDown);
-  canvas.addEventListener('pointermove', onMove);
-  canvas.addEventListener('pointerup', onUp);
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e.touches[0]); });
-  canvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e.touches[0]); });
-  canvas.addEventListener('touchend', e => { e.preventDefault(); onUp(e.changedTouches[0]); });
-  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  // Events
+  canvas.addEventListener('pointerdown',onDown);
+  canvas.addEventListener('pointermove',onMove);
+  canvas.addEventListener('pointerup',onUp);
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();onDown(e.touches[0]);});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();onMove(e.touches[0]);});
+  canvas.addEventListener('touchend',e=>{e.preventDefault();onUp(e.changedTouches[0]);});
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
-  // Initialize
-  resize();
-  initClouds();
-  initBirds();
-  showClubs();
-  showComment('The last hole of the day. The sun’s down, vibes are up.');
-  loop();
+  // Init
+  window.addEventListener('resize',resize);
+  resize(); initClouds(); initBirds(); showClubs(); showComment('Last hole: pull back and swing towards the green.');
+  requestAnimationFrame(loop);
 })();
 </script>
 </body>
