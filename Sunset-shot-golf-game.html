@@ -1,0 +1,297 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sunset Shot</title>
+  <style>
+    body, html { margin: 0; padding: 0; overflow: hidden; background: #000; }
+    canvas { display: block; touch-action: none; }
+    #ui { position: absolute; top: 10px; left: 10px; color: #003049; font-family: Space Grotesk, sans-serif; }
+    .button { background: #003049; color: #FDF5D9; border: none; padding: 8px 12px; margin: 4px; cursor: pointer; border-radius: 4px; font-size: 14px; }
+    #powerBar { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); width: 200px; height: 20px; background: #FFFFFF; border: 1px solid #003049; display: none; }
+    #powerFill { width: 0; height: 100%; background: #C1121F; }
+    #commentary { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.8); padding: 8px 12px; border-radius: 4px; max-width: 200px; font-family: Space Grotesk, sans-serif; opacity: 0; transition: opacity 0.5s; }
+    #endScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); color: #FDF5D9; display: none; flex-direction: column; justify-content: center; align-items: center; font-family: Space Grotesk, sans-serif; font-size: 20px; }
+    #endScreen .button { margin-top: 20px; }
+    #vibeUnlock { margin-top: 10px; font-size: 16px; opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <!-- SVG assets hidden -->
+  <img id="svgFlag" src="data:image/svg+xml;base64,PHN2ZyB4..." style="display:none">
+  <img id="svgTree" src="data:image/svg+xml;base64,PHN2ZyB4..." style="display:none">
+  <img id="svgTee" src="data:image/svg+xml;base64,PHN2ZyB4..." style="display:none"><canvas id="game"></canvas>
+
+  <div id="ui"></div>
+  <div id="powerBar"><div id="powerFill"></div></div>
+  <div id="commentary"></div>
+  <div id="endScreen">
+    <div id="finalScore"></div>
+    <div id="vibeTitle"></div>
+    <div id="vibeUnlock"></div>
+    <button class="button" id="restartBtn">Play again</button>
+    <button class="button" id="shopBtn">Shop the sunset vibe</button>
+  </div><script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const ui = document.getElementById('ui');
+  const powerBar = document.getElementById('powerBar');
+  const powerFill = document.getElementById('powerFill');
+  const commentaryEl = document.getElementById('commentary');
+  const endScreen = document.getElementById('endScreen');
+  const finalScoreEl = document.getElementById('finalScore');
+  const vibeTitleEl = document.getElementById('vibeTitle');
+  const vibeUnlockEl = document.getElementById('vibeUnlock');
+  const restartBtn = document.getElementById('restartBtn');
+  const shopBtn = document.getElementById('shopBtn');
+
+  const assets = {
+    flag: document.getElementById('svgFlag'),
+    tree: document.getElementById('svgTree'),
+    tee: document.getElementById('svgTee')
+  };
+
+  const clubs = [
+    { name: 'Big Dog', dist: 400 },
+    { name: 'Fairway Finder', dist: 300 },
+    { name: 'Approach Pro', dist: 200 },
+    { name: 'Escape Artist', dist: 150 },
+    { name: 'Hopeful Chipper', dist: 100 },
+    { name: 'Green Whisperer', dist: 80 }
+  ];
+
+  let clouds = [];
+  function initClouds() {
+    clouds = [];
+    for (let i=0; i<5; i++) {
+      clouds.push({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height*0.4,
+        speed: 0.2 + Math.random()*0.3,
+        size: 30 + Math.random()*20
+      });
+    }
+  }
+
+  const Game = {
+    shots: 0,
+    ball: null,
+    inMotion: false,
+    isAiming: false,
+    isPowering: false,
+    power: 0,
+    aimAngle: 0,
+    commentQueue: [],
+    commentActive: false,
+    usedTree: false,
+    usedRough: false,
+    usedPutter: false,
+    zones: {
+      fairway: ['Right down the fairway.','Center cut perfection.','Straight and narrow.'],
+      rough: ['Scenic route.','Taking the long grass tour.','Roughing it up.'],
+      trees: ['Trees are mostly air.','Branching out in style.','Wood you look at that.'],
+      green: ['Smooth roll.','Kiss the lip just right.','On the dance floor.']
+    },
+
+    init() {
+      resize();
+      window.addEventListener('resize', resize);
+      canvas.addEventListener('pointerdown', onPointerDown);
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerup', onPointerUp);
+      restartBtn.onclick = () => this.reset();
+      shopBtn.onclick = () => window.open('#');
+      initClouds();
+      this.reset();
+      loop();
+    },
+
+    reset() {
+      this.shots = 0;
+      this.usedTree = this.usedRough = this.usedPutter = false;
+      this.ball = { x: this.start.x, y: this.start.y, vx: 0, vy: 0 };
+      this.commentQueue = [];
+      this.commentActive = false;
+      commentaryEl.style.opacity = '0';
+      endScreen.style.display = 'none';
+      this.showClubUI(['Big Dog','Fairway Finder']);
+      initClouds();
+    },
+
+    showClubUI(names) {
+      ui.innerHTML = '';
+      names.forEach(n => {
+        const c = clubs.find(c=>c.name===n);
+        const btn = document.createElement('button');
+        btn.textContent = c.name;
+        btn.className = 'button';
+        btn.onclick = ()=> selectClub(c);
+        ui.appendChild(btn);
+      });
+    }
+  };
+
+  function resize() {
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+    Game.hole = { x: canvas.width/2, y: canvas.height - 50 };
+    Game.start = { x: canvas.width/2, y: 50 };
+    Game.tree = { x: canvas.width*0.8, y: canvas.height/2 };
+  }
+
+  let selectedClub = null;
+  function selectClub(c) {
+    selectedClub = c;
+    ui.innerHTML = '';
+    Game.isAiming = true;
+  }
+
+  function onPointerDown(e) {
+    if (Game.isAiming && !Game.isPowering) {
+      Game.isPowering = true;
+      Game.power = 0;
+      powerBar.style.display = 'block';
+      fillPower();
+    }
+  }
+
+  function onPointerMove(e) {
+    if (Game.isAiming) {
+      const rect = canvas.getBoundingClientRect();
+      Game.aimAngle = Math.atan2(
+        e.clientY-rect.top-Game.ball.y,
+        e.clientX-rect.left-Game.ball.x
+      );
+    }
+  }
+
+  function onPointerUp(e) {
+    if (Game.isAiming && Game.isPowering) {
+      Game.isPowering = false;
+      powerBar.style.display = 'none';
+      const dx = Game.power*Math.cos(Game.aimAngle);
+      const dy = Game.power*Math.sin(Game.aimAngle);
+      Game.ball.vx = dx*0.02;
+      Game.ball.vy = dy*0.02;
+      Game.inMotion = true;
+      Game.shots++;
+      Game.isAiming = false;
+    }
+  }
+
+  function fillPower() {
+    if (!Game.isPowering) return;
+    Game.power = Math.min(selectedClub.dist, Game.power+2);
+    powerFill.style.width = (Game.power/selectedClub.dist*100)+'%';
+    if (Game.power<selectedClub.dist) requestAnimationFrame(fillPower);
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function update() {
+    // clouds
+    clouds.forEach(c=>{
+      c.x += c.speed;
+      if (c.x - c.size > canvas.width) c.x = -c.size;
+    });
+    // ball physics
+    if (Game.inMotion) {
+      Game.ball.x += Game.ball.vx;
+      Game.ball.y += Game.ball.vy;
+      Game.ball.vx *= 0.99;
+      Game.ball.vy *= 0.99;
+      if (Math.hypot(Game.ball.vx, Game.ball.vy) < 0.1) {
+        Game.inMotion = false;
+        placeBall();
+      }
+    }
+  }
+
+  function placeBall() {
+    const zone = detectZone();
+    Game[zone==='trees'? 'usedTree': zone==='rough'? 'usedRough': zone==='green'&&selectedClub.name==='Green Whisperer'? 'usedPutter': ''] = true;
+    const phrases = Game.zones[zone];
+    enqueueComment(phrases[Math.floor(Math.random()*phrases.length)]);
+
+    if (zone==='green') Game.showClubUI(['Green Whisperer']);
+    else if (dist(Game.ball,Game.hole)<30) endGame();
+    else if (!zone==='green') {
+      const next = Game.shots<2
+        ? ['Approach Pro','Escape Artist','Hopeful Chipper']
+        : ['Escape Artist','Hopeful Chipper'];
+      Game.showClubUI(next);
+    }
+  }
+
+  function detectZone() {
+    if (dist(Game.ball,Game.hole) < 80) return 'green';
+    const x = Game.ball.x;
+    if (x>canvas.width*0.25 && x<canvas.width*0.75) return 'fairway';
+    if (x>canvas.width*0.1 && x<canvas.width*0.9) return 'rough';
+    return 'trees';
+  }
+
+  function enqueueComment(text, dur=1800) {
+    Game.commentQueue.push({ text, dur });
+    if (!Game.commentActive) showNextComment();
+  }
+
+  function showNextComment() {
+    if (!Game.commentQueue.length) { Game.commentActive=false; return; }
+    Game.commentActive=true;
+    const { text, dur } = Game.commentQueue.shift();
+    commentaryEl.textContent = text;
+    commentaryEl.style.opacity = '1';
+    setTimeout(()=>{ commentaryEl.style.opacity='0'; setTimeout(showNextComment,300); }, dur);
+  }
+
+  function endGame() {
+    finalScoreEl.textContent = `You shot a ${Game.shots}. Bogey never looked so good.`;
+    let title='Sundowner', unlock='Unlocked by sunset vibes.';
+    if (Game.usedTree) { title='Lumberjack'; unlock='Unlocked by roughing it in the trees.'; }
+    else if (Game.usedPutter) { title='Green Guardian'; unlock='Unlocked by finishing on the green.'; }
+    else if (Game.usedRough) { title='Scenic Veteran'; unlock='Unlocked by taking the scenic route.'; }
+    else if (Game.shots<=4) { title='Pin Seeker'; unlock='Unlocked with par or better.'; }
+    vibeTitleEl.textContent = title;
+    vibeUnlockEl.textContent = unlock;
+    endScreen.style.display = 'flex';
+  }
+
+  function draw() {
+    const w=canvas.width,h=canvas.height;
+    // sky
+    const sky=ctx.createLinearGradient(0,0,0,h);
+    sky.addColorStop(0,'#FFAB91'); sky.addColorStop(1,'#6A1B9A');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,w,h);
+    // sun
+    ctx.fillStyle='#FDD835'; ctx.beginPath(); ctx.arc(w/2,100,60,0,2*Math.PI); ctx.fill();
+    // clouds
+    clouds.forEach(c=>{
+      ctx.fillStyle='rgba(255,255,255,0.8)';
+      ctx.beginPath(); ctx.ellipse(c.x,c.y,c.size*1.3,c.size,0,0,2*Math.PI); ctx.fill();
+    });
+    // hills
+    ctx.fillStyle='#558B2F'; ctx.beginPath(); ctx.moveTo(0,h/2+40); ctx.quadraticCurveTo(w/4,h/2-60,w/2,h/2+40); ctx.lineTo(w, h); ctx.lineTo(0,h); ctx.fill();
+    ctx.fillStyle='#7CB342'; ctx.beginPath(); ctx.moveTo(0,h/2+80); ctx.quadraticCurveTo(w/3,h/2,h,w/2+80); ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.fill();
+    // fairway
+    ctx.fillStyle='#AED581'; ctx.fillRect(0,h/2-10,w,100);
+    // static items
+    ctx.drawImage(assets.tee,Game.start.x-20,Game.start.y-20,40,40);
+    ctx.drawImage(assets.tree,Game.tree.x-30,Game.tree.y-50,60,100);
+    ctx.fillStyle='#003049'; ctx.beginPath(); ctx.arc(Game.hole.x,Game.hole.y,15,0,2*Math.PI); ctx.fill();
+    ctx.drawImage(assets.flag,Game.hole.x-15,Game.hole.y-80,30,80);
+    // ball
+    ctx.fillStyle='#FDF5D9'; ctx.beginPath(); ctx.arc(Game.ball.x,Game.ball.y,8,0,2*Math.PI); ctx.fill();
+  }
+
+  function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}  
+
+  Game.init();
+})();
+</script></body>
+</html>
