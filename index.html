@@ -20,204 +20,152 @@
 </head>
 <body>
   <div class="brand-logo">🐕 BOGEY HOUND</div>
-  <canvas id="game"></canvas>
+  <img id="svgFlag" src="flag.svg" style="display:none">
+  <img id="svgTree" src="tree.svg" style="display:none">
+  <img id="svgTee"  src="tee.svg"  style="display:none">
+  <img id="svgDog"  src="dog.svg"  style="display:none"><canvas id="game"></canvas>
+
   <div id="ui"></div>
   <div id="powerBar"><div id="powerFill"></div></div>
-  <div id="commentary"></div>
-  <script>
-    (() => {
-      const canvas = document.getElementById('game');
-      const ctx    = canvas.getContext('2d');
-      const ui     = document.getElementById('ui');
-      const powerBar  = document.getElementById('powerBar');
-      const powerFill = document.getElementById('powerFill');
-      const comm      = document.getElementById('commentary');// Clubs set for 2-shot hole
-  const clubs = [
-    { name:'The Big Dog',    dist:300, swing:3 },  // off tee only
-    { name:'The Fairway Finder', dist:220, swing:1 },
-    { name:'The Pin Seeker',     dist:200, swing:2 },
-    { name:'The Escape Artist',  dist:100, swing:1 },
-    { name:'The Flat Stick',     dist:40,  swing:1 }
-  ];
-  const encourage = [
-    'Chill roll—nice and easy.',
-    'Smooth flow, keep it up.',
-    'That felt good.',
-    'Right on vibe.'
-  ];
+  <div id="commentary"></div>  <script>
+  (() => {
+    const canvas = document.getElementById('game');
+    const ctx    = canvas.getContext('2d');
+    const ui     = document.getElementById('ui');
+    const powerBar  = document.getElementById('powerBar');
+    const powerFill = document.getElementById('powerFill');
+    const comm      = document.getElementById('commentary');
 
-  let hole, start, tree, water;
-  let ball = { x:0, y:0, vx:0, vy:0 };
-  let selected = null;
-  let isAiming = false, isPowering = false;
-  let power = 0, aimAngle = 0, powerDir = 1;
-  let inMotion = false, shots = 0;
-  let clouds = [], birds = [];
-  let powerStart = 0;
+    // Preload SVG assets
+    const assets = {
+      flag: document.getElementById('svgFlag'),
+      tree: document.getElementById('svgTree'),
+      tee:  document.getElementById('svgTee'),
+      dog:  document.getElementById('svgDog')
+    };
 
-  function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    hole  = { x:canvas.width/2, y:80 };
-    start = { x:canvas.width/2, y:canvas.height - 80 };
-    tree  = { x:canvas.width*0.2, y:(start.y + hole.y)/2 };
-    // water hazard from 150 to 350 yd
-    const totalDist = start.y - hole.y;
-    const y150 = start.y - (150/400)*totalDist;
-    const y350 = start.y - (350/400)*totalDist;
-    water = { x:canvas.width*0.65, y:y350, w:canvas.width*0.3, h:(y150 - y350) };
-    ball.x = start.x;
-    ball.y = start.y;
-  }
+    // Clubs configured for a two-shot hole
+    const clubs = [
+      { name:'The Big Dog',      dist:300, swing:3, offTee:true },
+      { name:'The Fairway Finder',dist:260, swing:1 },
+      { name:'The Pin Seeker',     dist:200, swing:2 },
+      { name:'The Escape Artist',  dist:120, swing:1 },
+      { name:'The Flat Stick',     dist:40,  swing:1 }
+    ];
+    const encourage = [
+      'Chill roll—nice and easy.',
+      'Smooth flow, keep it up.',
+      'That felt good.',
+      'Right on vibe.'
+    ];
 
-  function initClouds() {
-    clouds = [];
-    for(let i=0; i<6; i++) {
-      clouds.push({
-        x: Math.random()*canvas.width,
-        y: Math.random()*canvas.height*0.4 + 50,
-        s: 0.3 + Math.random()*0.4,
-        r: 30 + Math.random()*20
+    let hole, start, treePos, water;
+    let ball = { x:0, y:0, vx:0, vy:0 };
+    let selected = null;
+    let isAiming = false, isPowering=false;
+    let power=0, aimAngle=0, powerDir=1;
+    let inMotion=false, shots=0;
+    let clouds=[], birds=[];
+    let powerStart=0;
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      hole  = { x:canvas.width/2, y:80 };
+      start = { x:canvas.width/2, y:canvas.height-80 };
+      treePos = { x:canvas.width*0.2, y:(start.y+hole.y)/2 };
+      const total = start.y - hole.y;
+      const y150 = start.y - (150/400)*total;
+      const y350 = start.y - (350/400)*total;
+      water = { x:canvas.width*0.65, y:y350, w:canvas.width*0.3, h:(y150-y350) };
+
+      ball.x = start.x;
+      ball.y = start.y;
+    }
+
+    function initClouds() {
+      clouds = [];
+      for(let i=0;i<6;i++) clouds.push({ x:Math.random()*canvas.width, y:Math.random()*canvas.height*0.4+50, s:0.3+Math.random()*0.4, r:30+Math.random()*20 });
+    }
+    function initBirds() {
+      birds = [];
+      for(let i=0;i<3;i++) birds.push({ x:Math.random()*canvas.width, y:100+Math.random()*200, s:0.5+Math.random()*0.5, phase:Math.random()*2*Math.PI });
+    }
+
+    function typeText(txt, cb) {
+      comm.textContent = '';
+      comm.style.opacity = '1';
+      let i=0;
+      (function step(){
+        if(i<txt.length) {
+          comm.textContent += txt[i++];
+          setTimeout(step,40);
+        } else if(cb) cb();
+      })();
+    }
+    function showComment(txt, cb) {
+      typeText(txt, ()=>{
+        setTimeout(()=>{ comm.style.opacity='0'; if(cb) cb(); },2000);
       });
     }
-  }
-  function initBirds() {
-    birds = [];
-    for(let i=0; i<3; i++) {
-      birds.push({
-        x: Math.random()*canvas.width,
-        y: 100 + Math.random()*200,
-        s: 0.5 + Math.random()*0.5,
-        phase: Math.random()*2*Math.PI
+
+    function showClubs() {
+      const d = Math.hypot(ball.x-hole.x, ball.y-hole.y);
+      ui.innerHTML = '<div style="margin-bottom:6px;color:#e8d5a8;">Choose club</div>';
+      let opts;
+      if(shots===0 && d>clubs[0].dist) opts=['The Big Dog','The Fairway Finder'];
+      else if(d>clubs[1].dist) opts=['The Fairway Finder','The Pin Seeker'];
+      else if(d>clubs[2].dist) opts=['The Pin Seeker','The Escape Artist'];
+      else if(d>clubs[3].dist) opts=['The Escape Artist','The Flat Stick'];
+      else opts=['The Flat Stick'];
+      opts.forEach(name=>{
+        const c=clubs.find(x=>x.name===name);
+        const b=document.createElement('button');
+        b.className='button';
+        b.innerHTML=`<strong>${c.name}</strong><small>up to ${c.dist} yd</small>`;
+        b.onclick=()=>pickClub(c);
+        ui.appendChild(b);
       });
     }
-  }
 
-  function typeText(txt, cb) {
-    comm.textContent = '';
-    comm.style.opacity = '1';
-    let i = 0;
-    (function step(){
-      if(i < txt.length) {
-        comm.textContent += txt[i++];
-        setTimeout(step, 40);
-      } else if(cb) cb();
-    })();
-  }
-  function showComment(txt, cb) {
-    typeText(txt, () => {
-      setTimeout(() => {
-        comm.style.opacity = '0';
-        if(cb) cb();
-      }, 2000);
-    });
-  }
-
-  function showClubs() {
-    const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
-    ui.innerHTML = '<div style="margin-bottom:6px;color:#e8d5a8;">Choose club</div>';
-    let opts;
-    if(shots === 0 && d > 220) opts = ['The Big Dog', 'The Fairway Finder'];
-    else if(d > 220)      opts = ['The Fairway Finder', 'The Pin Seeker'];
-    else if(d > 200)      opts = ['The Pin Seeker', 'The Escape Artist'];
-    else if(d > 100)      opts = ['The Escape Artist', 'The Flat Stick'];
-    else                  opts = ['The Flat Stick'];
-    opts.forEach(name => {
-      const c = clubs.find(x => x.name === name);
-      const b = document.createElement('button');
-      b.className = 'button';
-      b.innerHTML = `<strong>${c.name}</strong><small>up to ${c.dist} yd</small>`;
-      b.onclick = () => pickClub(c);
-      ui.appendChild(b);
-    });
-  }
-
-  function pickClub(c) {
-    selected = c;
-    isAiming = true;
-    showComment(`Rolling out ${c.name}.`);
-    ui.innerHTML = '';
-  }
-
-  function oscillate() {
-    if(!isPowering) return;
-    power += powerDir * (2 * selected.swing);
-    if(power >= selected.dist || power <= 0) powerDir *= -1;
-    powerFill.style.width = (power/selected.dist*100) + '%';
-    requestAnimationFrame(oscillate);
-  }
-  function onDown(e) {
-    if(!isAiming || inMotion) return;
-    isPowering = true;
-    power = 0; powerDir = 1;
-    powerBar.style.display = 'block';
-    powerStart = Date.now();
-    oscillate();
-  }
-  function onMove(e) {
-    if(!isAiming) return;
-    const r = canvas.getBoundingClientRect();
-    const mx = e.clientX - r.left,
-          my = e.clientY - r.top;
-    aimAngle = (selected.name !== 'The Flat Stick')
-      ? Math.atan2(my - ball.y, mx - ball.x)
-      : Math.atan2(hole.y - ball.y, hole.x - ball.x);
-  }
-  function onUp(e) {
-    if(!isPowering) return;
-    isPowering = false;
-    powerBar.style.display = 'none';
-    if(power > 5) {
-      let angle = aimAngle;
-      if(selected.name !== 'The Flat Stick') {
-        angle += Math.sin((Date.now() - powerStart)/300)*0.3;
-      } else {
-        angle += (Math.random()-0.5)*0.2;
-      }
-      const factor = 0.012;
-      ball.vx = Math.cos(angle)*power*factor;
-      ball.vy = Math.sin(angle)*power*factor;
-      const shotDist = Math.round(power*0.6);
-      inMotion = true;
-      shots++;
-      showComment(
-        `${selected.name} went ${shotDist} yd. ${encourage[Math.floor(Math.random()*encourage.length)]}`,
-        showClubs
-      );
-      isAiming = false;
-      powerFill.style.width = '0%';
+    function pickClub(c) {
+      selected = c;
+      isAiming = true;
+      showComment(`Pulling out ${c.name}.`);
+      ui.innerHTML = '';
     }
-  }
 
-  function update() {
-    if(inMotion) {
-      ball.x += ball.vx; ball.y += ball.vy;
-      ball.vx *= 0.98; ball.vy *= 0.98;
-      if(Math.hypot(ball.vx, ball.vy) < 0.5
-         || (selected.name === 'The Flat Stick' && ball.y < hole.y)) {
-        inMotion = false;
-        placeBall();
-      }
+    function oscillate() {
+      if(!isPowering) return;
+      power += powerDir*(2*c.selected.swing);
+      if(power>=selected.dist||power<=0) powerDir*=-1;
+      powerFill.style.width = (power/selected.dist*100)+'%';
+      requestAnimationFrame(oscillate);
     }
-    clouds.forEach(o => { o.x += o.s; if(o.x > canvas.width + o.r) o.x = -o.r; });
-    birds.forEach(b => { b.x += b.s; b.phase += 0.2; b.y += Math.sin(b.phase); if(b.x > canvas.width + 50) b.x = -50; });
-  }
-  function placeBall() {
-    const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
-    if(d < 20) return showComment('You sank it. Bogey never looked so good.');
-    showClubs();
-  }
-
-  function draw() {
-    const w = canvas.width, h = canvas.height;
-    // sky
-    const sky = ctx.createLinearGradient(0,0,0,h);
-    sky.addColorStop(0,'#FF6B35');
-    sky.addColorStop(1,'#FF8C42');
-    ctx.fillStyle = sky; ctx.fillRect(0,0,w,h);
-    // sun
-    ctx.fillStyle='#FFD700'; ctx.beginPath(); ctx.arc(w/2,120,60,0,2*Math.PI); ctx.fill();
-    // clouds
-    clouds.forEach(o=>{ ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(o.x,o.y,o.r,o.r*0.6,0,0,2*Math.P
-
-                                                                                            
+    function onDown(e) {
+      if(!isAiming||inMotion) return;
+      isPowering=true; power=0; powerDir=1; powerStart=Date.now(); powerBar.style.display='block';
+      oscillate();
+    }
+    function onMove(e) {
+      if(!isAiming) return;
+      const r=canvas.getBoundingClientRect();
+      const mx=e.clientX-r.left, my=e.clientY-r.top;
+      aimAngle = (selected.name!=='The Flat Stick')
+        ? Math.atan2(my-ball.y, mx-ball.x)
+        : Math.atan2(hole.y-ball.y, hole.x-ball.x);
+    }
+    function onUp(e) {
+      if(!isPowering) return;
+      isPowering=false; powerBar.style.display='none';
+      if(power>5){
+        let angle=aimAngle;
+        if(selected.name!=='The Flat Stick') angle+=Math.sin((Date.now()-powerStart)/300)*0.3;
+        else angle+=(Math.random()-0.5)*0.2;
+        const factor=0.012;
+        ball.vx=Math.cos(angle)*power*factor;
+        ball.vy=Math.sin(angle)*power*factor;
+        const shotDist=Math.round(power*0.6);
+        inMotion=true; shots++;
+        showComment(`${selected.name} went ${shotDist} yd. ${encourage[Math.floor(Math.random()*enc
