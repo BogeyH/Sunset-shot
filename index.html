@@ -264,34 +264,133 @@
 
   function draw() {
     const w=canvas.width,h=canvas.height;
-    // sky
-    const sky=ctx.createLinearGradient(0,0,0,h);
-    sky.addColorStop(0,'#FFAB91'); sky.addColorStop(1,'#6A1B9A');
-    ctx.fillStyle=sky; ctx.fillRect(0,0,w,h);
-    // sun
-    ctx.fillStyle='#FDD835'; ctx.beginPath(); ctx.arc(w/2,100,60,0,2*Math.PI); ctx.fill();
-    // clouds
-    clouds.forEach(c=>{
-      ctx.fillStyle='rgba(255,255,255,0.8)';
-      ctx.beginPath(); ctx.ellipse(c.x,c.y,c.size*1.3,c.size,0,0,2*Math.PI); ctx.fill();
-    });
-    // hills
-    ctx.fillStyle='#558B2F'; ctx.beginPath(); ctx.moveTo(0,h/2+40); ctx.quadraticCurveTo(w/4,h/2-60,w/2,h/2+40); ctx.lineTo(w, h); ctx.lineTo(0,h); ctx.fill();
-    ctx.fillStyle='#7CB342'; ctx.beginPath(); ctx.moveTo(0,h/2+80); ctx.quadraticCurveTo(w/3,h/2,h,w/2+80); ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.fill();
-    // fairway
-    ctx.fillStyle='#AED581'; ctx.fillRect(0,h/2-10,w,100);
-    // static items
-    ctx.drawImage(assets.tee,Game.start.x-20,Game.start.y-20,40,40);
-    ctx.drawImage(assets.tree,Game.tree.x-30,Game.tree.y-50,60,100);
-    ctx.fillStyle='#003049'; ctx.beginPath(); ctx.arc(Game.hole.x,Game.hole.y,15,0,2*Math.PI); ctx.fill();
-    ctx.drawImage(assets.flag,Game.hole.x-15,Game.hole.y-80,30,80);
-    // ball
-    ctx.fillStyle='#FDF5D9'; ctx.beginPath(); ctx.arc(Game.ball.x,Game.ball.y,8,0,2*Math.PI); ctx.fill();
+    // sky<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bogey Hound: Sunset Shot</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    body, html { margin:0; padding:0; overflow:hidden; background:#000; font-family:'Space Grotesk',sans-serif; }
+    canvas { display:block; touch-action:none; }
+    .brand-logo { position:absolute; top:20px; left:50%; transform:translateX(-50%); background:#f4e5c2; color:#2c5530; padding:8px 16px; border-radius:20px; font-weight:700; font-size:16px; border:2px solid #f4e5c2; }
+    #ui { position:absolute; top:60px; left:20px; color:#f4e5c2; font-weight:500; }
+    .button { background:#f4e5c2; color:#2c5530; border:none; padding:12px 18px; margin:6px; cursor:pointer; border-radius:25px; font-size:14px; font-weight:600; transition:all .3s; }
+    .button:hover { background:#e8d5a8; transform:translateY(-2px); }
+    #powerBar { position:absolute; bottom:80px; left:50%; transform:translateX(-50%); width:250px; height:25px; background:rgba(255,255,255,.2); border:2px solid #f4e5c2; border-radius:15px; display:none; overflow:hidden; }
+    #powerFill { width:0; height:100%; background:linear-gradient(90deg,#4CAF50,#FFC107,#f44336); transition:width .1s; border-radius:12px; }
+    #commentary { position:absolute; bottom:140px; left:50%; transform:translateX(-50%); background:rgba(44,85,48,.9); color:#f4e5c2; padding:12px 16px; border-radius:15px; max-width:300px; font-weight:500; white-space:pre-wrap; opacity:0; transition:opacity .3s; border:2px solid rgba(244,229,194,.3); text-align:center; }
+    @media(max-width:768px){#ui,#commentary{left:10px;right:10px;transform:none;} #powerBar{width:200px;bottom:60px;}}
+  </style>
+</head>
+<body>
+  <div class="brand-logo">🐕 BOGEY HOUND</div>
+  <canvas id="game"></canvas>
+  <div id="ui"></div>
+  <div id="powerBar"><div id="powerFill"></div></div>
+  <div id="commentary"></div>
+  <script>
+(() => {
+  const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+  const ui = document.getElementById('ui');
+  const powerBar = document.getElementById('powerBar'), powerFill = document.getElementById('powerFill');
+  const comm = document.getElementById('commentary');
+
+  const clubs = [
+    {name:'Big Dog',dist:400},
+    {name:'Fairway Friend',dist:300},
+    {name:'Approach Ace',dist:200},
+    {name:'Escape Artist',dist:150},
+    {name:'Bump & Run',dist:100},
+    {name:'Hole Hunter',dist:80}
+  ];
+  const encouragements = ['Feel the green, trust the read.','All swings welcome here.','Just keep it moving.','Nice and easy does it.'];
+
+  let hole, start, tree, water;
+  let clouds=[], birds=[];
+  let selected=null, isAiming=false, isPowering=false, power=0, aimAngle=0;
+  let ball={x:0,y:0,vx:0,vy:0}, inMotion=false, shots=0;
+
+  function resize(){ canvas.width=innerWidth; canvas.height=innerHeight;
+    hole={x:canvas.width/2,y:canvas.height-80};
+    start={x:canvas.width/2,y:80}; tree={x:canvas.width*0.2,y:canvas.height*0.6};
+    water={x:canvas.width*0.7,y:canvas.height*0.7,w:200,h:80};
+    ball.x=start.x; ball.y=start.y;
   }
 
-  function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}  
+  function initClouds(){ clouds=[]; for(let i=0;i<6;i++) clouds.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height*0.4+50,s:0.3+Math.random()*0.4,r:30+Math.random()*20}); }
+  function initBirds(){ birds=[]; for(let i=0;i<3;i++) birds.push({x:Math.random()*canvas.width,y:100+Math.random()*200,s:0.5+Math.random()*0.5,phase:Math.random()*2*Math.PI}); }
 
-  Game.init();
+  function typeText(text, speed=50, cb){ comm.textContent=''; comm.style.opacity=1; let i=0;
+    (function step(){ if(i<text.length){ comm.textContent+=text[i++]; setTimeout(step,speed);} else if(cb) cb(); })();
+  }
+  function showComment(msg){ typeText(msg,40,()=>setTimeout(()=>comm.style.opacity=0,2000)); }
+
+  function showClubs(){ ui.innerHTML='<div style="margin-bottom:6px;color:#e8d5a8;">Select club</div>';
+    clubs.forEach(c=>{ let b=document.createElement('button'); b.className='button'; b.textContent=c.name; b.onclick=()=>selectClub(c); ui.appendChild(b); });
+  }
+
+  function selectClub(c){ selected=c; isAiming=true; showComment(c.name + ' ready. Pull back to swing.'); ui.innerHTML=''; }
+
+  function onDown(e){ if(!isAiming || inMotion) return; isPowering=true; power=0; powerBar.style.display='block'; powerStart=Date.now(); }
+  function onMove(e){ if(!isAiming) return; let r=canvas.getBoundingClientRect(); let mx=e.clientX-r.left, my=e.clientY-r.top;
+    aimAngle=Math.atan2(start.y - my, start.x - mx);
+    if(isPowering){ let d=Math.hypot(mx-start.x,my-start.y); power=Math.min(selected.dist,d); powerFill.style.width=(power/selected.dist*100)+'%'; }
+  }
+  function onUp(e){ if(isPowering){ isPowering=false; powerBar.style.display='none'; if(power>10){ let speedFactor=power/100; let swingSpeed=speedFactor*10;
+        // oscillate angle based on power
+        let swing= Math.sin((Date.now()-powerStart)/1000*swingSpeed)*0.5;
+        let angle=aimAngle+swing;
+        ball.vx=Math.cos(angle)*power*0.02; ball.vy=Math.sin(angle)*power*0.02;
+        inMotion=true; shots++; showComment('Shot '+shots); }
+    }
+  }
+
+  function loop(){ update(); draw(); requestAnimationFrame(loop); }
+  function update(){ if(inMotion){ ball.x+=ball.vx; ball.y+=ball.vy; ball.vx*=0.98; ball.vy*=0.98;
+      if(Math.hypot(ball.vx,ball.vy)<0.5){ inMotion=false; placeBall(); }}
+    clouds.forEach(o=>{ o.x+=o.s; if(o.x>canvas.width+o.r) o.x=-o.r; });
+    birds.forEach(b=>{ b.x+=b.s; b.phase+=0.2; b.y+=Math.sin(b.phase); if(b.x>canvas.width+50) b.x=-50; });
+  }
+
+  function placeBall(){ let distHole=Math.hypot(ball.x-hole.x,ball.y-hole.y);
+    if(distHole<20){ showComment('You made it!'); } else showClubs(); }
+
+  function draw(){ let w=canvas.width,h=canvas.height;
+    // sky
+    let sk=ctx.createLinearGradient(0,0,0,h); sk.addColorStop(0,'#FF6B35'); sk.addColorStop(1,'#FF8C42'); ctx.fillStyle=sk; ctx.fillRect(0,0,w,h);
+    // sun
+    ctx.fillStyle='#FFD700'; ctx.beginPath(); ctx.arc(w/2,120,60,0,2*Math.PI); ctx.fill();
+    // clouds
+    clouds.forEach(o=>{ ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(o.x,o.y,o.r, o.r*0.6,0,0,2*Math.PI); ctx.fill(); });
+    // fairway
+    ctx.fillStyle='#6B8E23'; ctx.fillRect(0,h*0.5,w,h*0.5);
+    // bunker
+    ctx.fillStyle='#DEB887'; ctx.beginPath(); ctx.ellipse(hole.x-160,h*0.5+40,50,30,0,0,2*Math.PI); ctx.fill();
+    // tree line
+    ctx.fillStyle='#228B22'; for(let i=0;i<5;i++) ctx.beginPath(),ctx.arc(50+i*60,h*0.5+20,40,0,2*Math.PI),ctx.fill();
+    // beach
+    ctx.fillStyle='#FFEBCD'; ctx.fillRect(w-150,h*0.5,150,h*0.5);
+    // water
+    ctx.fillStyle='#4A90E2'; ctx.fillRect(w-150,h*0.6,150,80);
+    // hole green
+    ctx.fillStyle='#90EE90'; ctx.beginPath(); ctx.arc(hole.x,hole.y,80,0,2*Math.PI); ctx.fill(); ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(hole.x,hole.y,8,0,2*Math.PI); ctx.fill();
+    // ball
+    ctx.fillStyle='#FFF'; ctx.beginPath(); ctx.arc(ball.x,ball.y,8,0,2*Math.PI); ctx.fill();
+    // aim line
+    if(isAiming && !inMotion){ ctx.strokeStyle='rgba(255,255,225,0.8)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(ball.x,ball.y);
+      let len=100; let ax=ball.x+Math.cos(aimAngle)*len, ay=ball.y+Math.sin(aimAngle)*len; ctx.lineTo(ax,ay); ctx.stroke(); }
+    // UI handled separately
+  }
+
+  // events
+  canvas.addEventListener('pointerdown',onDown);
+  canvas.addEventListener('pointermove',onMove);
+  canvas.addEventListener('pointerup',onUp);
+  // init
+  resize(); initClouds(); initBirds(); showClubs(); showComment('The last hole of the day. The sun’s down, vibes are up.'); loop();
 })();
-</script></body>
+</script>
+</body>
 </html>
