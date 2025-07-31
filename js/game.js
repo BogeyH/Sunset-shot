@@ -1,72 +1,63 @@
 
 window.onload = () => {
   let gameState = {
-    shot1: '',
-    shot2: '',
-    putt: '',
-    finalScore: 4,
-    vibeTitle: '',
-    angle: 0,
-    power: 0
+    shots: [],
+    currentClub: '',
+    score: 0,
+    vibeStats: {
+      treesHit: 0,
+      fairwaysHit: 0,
+      sandShots: 0,
+      consistentShots: 0
+    }
   };
 
   const canvas = document.getElementById('arcCanvas');
   const ctx = canvas.getContext('2d');
-  const gameContainer = document.getElementById('game-container');
 
-  // Create sliders for aim and power
-  const aimSlider = document.createElement('input');
-  aimSlider.type = 'range';
-  aimSlider.min = '-45';
-  aimSlider.max = '45';
-  aimSlider.value = '0';
-  aimSlider.id = 'aim-slider';
-  aimSlider.style.width = '80%';
-  aimSlider.style.margin = '10px';
+  const sceneEl = document.getElementById('scene');
+  const choicesEl = document.getElementById('choices');
+  const commentaryEl = document.getElementById('commentary');
+  const startBtn = document.getElementById('start-btn');
 
-  const powerSlider = document.createElement('input');
-  powerSlider.type = 'range';
-  powerSlider.min = '0.2';
-  powerSlider.max = '1';
-  powerSlider.step = '0.01';
-  powerSlider.value = '0.7';
-  powerSlider.id = 'power-slider';
-  powerSlider.style.width = '80%';
-  powerSlider.style.margin = '10px';
-
-  gameContainer.appendChild(aimSlider);
-  gameContainer.appendChild(powerSlider);
-
-  document.getElementById('start-btn').addEventListener('click', () => {
-    document.getElementById('start-btn').style.display = 'none';
+  startBtn.addEventListener('click', () => {
+    startBtn.style.display = 'none';
     document.getElementById('bg-music').play();
     showScene('tee');
   });
 
+  function typeCommentary(text, callback) {
+    commentaryEl.innerText = '';
+    let i = 0;
+    function type() {
+      if (i < text.length) {
+        commentaryEl.innerText += text.charAt(i);
+        i++;
+        setTimeout(type, 30);
+      } else if (callback) {
+        setTimeout(callback, 1000);
+      }
+    }
+    type();
+  }
+
   function showScene(scene) {
-    const sceneEl = document.getElementById('scene');
-    const choicesEl = document.getElementById('choices');
-    const commentaryEl = document.getElementById('commentary');
     canvas.style.display = 'none';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    aimSlider.style.display = 'none';
-    powerSlider.style.display = 'none';
-
     choicesEl.innerHTML = '';
-    commentaryEl.innerText = ''; document.getElementById('game-container').appendChild(playAgainBtn);
+    commentaryEl.innerText = '';
 
     if (scene === 'tee') {
       sceneEl.innerText = COPY.intro_text;
       choicesEl.innerHTML = `
-        <button onclick="takeShot('driver')">${COPY.driver}</button>
-        <button onclick="takeShot('3wood')">${COPY['3wood']}</button>
+        <button onclick="startShot('driver')">${COPY.driver}</button>
+        <button onclick="startShot('3wood')">${COPY['3wood']}</button>
       `;
     } else if (scene === 'approach') {
       sceneEl.innerText = COPY.approach_text;
       choicesEl.innerHTML = `
-        <button onclick="takeApproach('iron')">${COPY.iron}</button>
-        <button onclick="takeApproach('wedge')">${COPY.wedge}</button>
+        <button onclick="startShot('iron')">${COPY.iron}</button>
+        <button onclick="startShot('wedge')">${COPY.wedge}</button>
       `;
     } else if (scene === 'putt') {
       sceneEl.innerText = COPY.putt_text;
@@ -79,9 +70,46 @@ window.onload = () => {
     }
   }
 
-  function animateArc(callback, angle, power) {
+  function startShot(club) {
+    gameState.currentClub = club;
+    sceneEl.innerText = `Set your angle (left/right)...`;
+    let inputStage = 'angle';
+    let angle = 0;
+    let power = 0;
+    let progress = 0;
+    let direction = 1;
+
+    const meter = setInterval(() => {
+      progress += 2 * direction;
+      if (progress >= 100 || progress <= 0) direction *= -1;
+      sceneEl.innerText = `${inputStage === 'angle' ? 'Angle' : 'Power'}: ${progress}`;
+    }, 30);
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = "Stop";
+    confirmBtn.onclick = () => {
+      if (inputStage === 'angle') {
+        angle = progress - 50; // range from -50 to +50
+        inputStage = 'power';
+        progress = 0;
+        direction = 1;
+        sceneEl.innerText = `Now set your power...`;
+      } else {
+        power = progress / 100; // normalized
+        clearInterval(meter);
+        confirmBtn.remove();
+        takeShot(club, angle, power);
+      }
+    };
+    choicesEl.innerHTML = '';
+    choicesEl.appendChild(confirmBtn);
+  }
+
+  function takeShot(club, angle, power) {
+    gameState.score++;
+    gameState.shots.push({ club, angle, power });
+
     canvas.style.display = 'block';
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     let t = 0;
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -98,74 +126,52 @@ window.onload = () => {
         requestAnimationFrame(draw);
       } else {
         canvas.style.display = 'none';
-        callback();
+        let comment = getCommentary(club, angle, power);
+        typeCommentary(comment, () => {
+          if (gameState.shots.length === 1) showScene('approach');
+          else if (gameState.shots.length === 2) showScene('putt');
+        });
       }
     };
     draw();
   }
 
-  window.takeShot = function(club) {
-    gameState.shot1 = club;
-    const angle = parseInt(aimSlider.value);
-    const power = parseFloat(powerSlider.value);
-    gameState.angle = angle;
-    gameState.power = power;
-    aimSlider.style.display = 'block';
-    powerSlider.style.display = 'block';
-
-    if (club === 'driver') {
-      gameState.finalScore += 1;
-      gameState.vibeTitle = 'lumberjack';
-    } else {
-      gameState.vibeTitle = 'sundowner';
+  function getCommentary(club, angle, power) {
+    if (Math.abs(angle) > 30) {
+      gameState.vibeStats.treesHit++;
+      return "Took the scenic route—hope there's a gap!";
     }
-
-    animateArc(() => {
-      document.getElementById('commentary').innerText = COPY[club + '_result'];
-      setTimeout(() => waitForInput('approach'), 2500);
-    }, angle, power);
-  };
-
-  window.takeApproach = function(club) {
-    gameState.shot2 = club;
-    const angle = parseInt(aimSlider.value);
-    const power = parseFloat(powerSlider.value);
-    gameState.angle = angle;
-    gameState.power = power;
-    aimSlider.style.display = 'block';
-    powerSlider.style.display = 'block';
-
-    if (club === 'wedge') {
-      gameState.finalScore += 1;
-      if (gameState.vibeTitle === '') gameState.vibeTitle = 'beach_bum';
+    if (club === 'wedge' && power < 0.5) {
+      gameState.vibeStats.sandShots++;
+      return "Crafty wedge work. Low and lovely.";
     }
+    if (Math.abs(angle) < 10 && power > 0.6) {
+      gameState.vibeStats.consistentShots++;
+      return "Right down the pipe. That's smooth.";
+    }
+    return "Well struck. Could be in good shape.";
+  }
 
-    animateArc(() => {
-      document.getElementById('commentary').innerText = COPY[club + '_result'];
-      setTimeout(() => waitForInput('putt'), 2500);
-    }, angle, power);
-  };
-
-  window.takePutt = function(powerType) {
-    gameState.putt = powerType;
-    aimSlider.style.display = 'none';
-    powerSlider.style.display = 'none';
-
+  function takePutt(powerType) {
+    gameState.score++;
     if (powerType === 'firm') {
-      gameState.finalScore += 1;
+      typeCommentary(COPY.firm_result, () => showScene('finish'));
+    } else {
+      typeCommentary(COPY.soft_result, () => showScene('finish'));
     }
+  }
 
-    document.getElementById('commentary').innerText = COPY[powerType + '_result'];
-    setTimeout(() => showScene('finish'), 3000);
-  };
+  function determineVibe() {
+    const stats = gameState.vibeStats;
+    if (stats.treesHit >= 2) return 'lumberjack';
+    if (stats.sandShots >= 1) return 'beach_bum';
+    if (stats.consistentShots >= 2) return 'sundowner';
+    return 'sundowner';
+  }
 
   function showFinalScore() {
-    const sceneEl = document.getElementById('scene');
-    const choicesEl = document.getElementById('choices');
-    const commentaryEl = document.getElementById('commentary');
-    const score = gameState.finalScore;
-    const vibe = gameState.vibeTitle || 'sundowner';
-
+    const score = gameState.score;
+    const vibe = determineVibe();
     let scoreComment = '';
     if (score <= 4) {
       scoreComment = COPY.score_4_or_less.replace('{score}', score);
@@ -180,30 +186,10 @@ window.onload = () => {
       <h3>Your vibe: ${COPY[vibe]}</h3>
     `;
     choicesEl.innerHTML = `
-      <button onclick="window.location.href='https://bogeyhound.com?utm_source=sunsetround&utm_campaign=vibe'">
-        ${COPY.shop}
-      </button>
-      <button onclick="window.location.href='https://bogeyhound.com/join?utm_source=sunsetround&utm_campaign=vibe'">
-        ${COPY.join}
-      </button>
+      <button onclick="location.reload()">Play Again</button>
+      <button onclick="window.location.href='https://bogeyhound.com?utm_source=sunsetround&utm_campaign=vibe'">${COPY.shop}</button>
+      <button onclick="window.location.href='https://bogeyhound.com/join?utm_source=sunsetround&utm_campaign=vibe'">${COPY.join}</button>
     `;
-    commentaryEl.innerText = ''; document.getElementById('game-container').appendChild(playAgainBtn);
+    commentaryEl.innerText = '';
   }
 };
-
-  function waitForInput(nextScene) {
-    const confirmBtn = document.createElement('button');
-    confirmBtn.textContent = "Take the Shot";
-    confirmBtn.onclick = () => {
-      confirmBtn.remove();
-      showScene(nextScene);
-    };
-    document.getElementById('choices').appendChild(confirmBtn);
-  }
-
-  const playAgainBtn = document.createElement('button');
-  playAgainBtn.textContent = "Play Again";
-  playAgainBtn.style.marginTop = "20px";
-  playAgainBtn.onclick = () => {
-    location.reload();
-  };
