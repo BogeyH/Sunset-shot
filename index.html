@@ -2,10 +2,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bogey Hound: Sunset Round</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <div id="game-container">
@@ -16,8 +16,10 @@
     <button id="start-btn">Start Sunset Round</button>
   </div>
   <audio id="bg-music" loop>
-    <source src="assets/lofi.mp3" type="audio/mpeg">
+    <source src="assets/lofi.mp3" type="audio/mpeg" />
   </audio>
+
+  <!-- Define copy before game.js loads -->
   <script>
     const COPY = {
       intro_text: "The last hole of the day. The sun's down. The vibes are up. Let’s walk it in.",
@@ -45,6 +47,8 @@
       join: "Join the Pack"
     };
   </script>
+
+  <!-- Load JS after DOM and COPY are ready -->
   <script src="js/game.js"></script>
 </body>
 </html>
