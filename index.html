@@ -31,19 +31,19 @@
       const ui     = document.getElementById('ui');
       const powerBar  = document.getElementById('powerBar');
       const powerFill = document.getElementById('powerFill');
-      const comm      = document.getElementById('commentary');// Clubs with custom swing behavior
+      const comm      = document.getElementById('commentary');// Clubs set for 2-shot hole
   const clubs = [
-    { name:'The Big Dog',   dist:250, swing:3 },   // erratic
-    { name:'Fairway Finder',dist:210, swing:1 },   // easy
-    { name:'Pin Seeker',     dist:160, swing:2 },   // medium
-    { name:'Escape Artist',  dist: 80, swing:1 },   // easy
-    { name:'Flat Stick',     dist: 40, swing:1 }    // easy
+    { name:'The Big Dog',    dist:300, swing:3 },  // off tee only
+    { name:'The Fairway Finder', dist:220, swing:1 },
+    { name:'The Pin Seeker',     dist:200, swing:2 },
+    { name:'The Escape Artist',  dist:100, swing:1 },
+    { name:'The Flat Stick',     dist:40,  swing:1 }
   ];
   const encourage = [
-    'Chill roll—good rhythm.',
-    'Easy flow, keep it up.',
-    'That was smooth.',
-    'Nice and steady.'
+    'Chill roll—nice and easy.',
+    'Smooth flow, keep it up.',
+    'That felt good.',
+    'Right on vibe.'
   ];
 
   let hole, start, tree, water;
@@ -56,74 +56,78 @@
   let powerStart = 0;
 
   function resize() {
-    canvas.width  = innerWidth;
-    canvas.height = innerHeight;
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
     hole  = { x:canvas.width/2, y:80 };
-    start = { x:canvas.width/2, y:canvas.height-80 };
-    tree  = { x:canvas.width*0.2, y:(start.y+hole.y)/2 };
-    // water hazard between 150-350 yd
+    start = { x:canvas.width/2, y:canvas.height - 80 };
+    tree  = { x:canvas.width*0.2, y:(start.y + hole.y)/2 };
+    // water hazard from 150 to 350 yd
     const totalDist = start.y - hole.y;
     const y150 = start.y - (150/400)*totalDist;
     const y350 = start.y - (350/400)*totalDist;
-    water = { x:canvas.width*0.65, y:y350, w:canvas.width*0.3, h:(y150-y350) };
+    water = { x:canvas.width*0.65, y:y350, w:canvas.width*0.3, h:(y150 - y350) };
     ball.x = start.x;
     ball.y = start.y;
   }
 
   function initClouds() {
     clouds = [];
-    for(let i=0;i<6;i++) clouds.push({
-      x: Math.random()*canvas.width,
-      y: Math.random()*canvas.height*0.4 + 50,
-      s: 0.3 + Math.random()*0.4,
-      r: 30 + Math.random()*20
-    });
+    for(let i=0; i<6; i++) {
+      clouds.push({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height*0.4 + 50,
+        s: 0.3 + Math.random()*0.4,
+        r: 30 + Math.random()*20
+      });
+    }
   }
   function initBirds() {
     birds = [];
-    for(let i=0;i<3;i++) birds.push({
-      x: Math.random()*canvas.width,
-      y: 100 + Math.random()*200,
-      s: 0.5 + Math.random()*0.5,
-      phase: Math.random()*2*Math.PI
-    });
+    for(let i=0; i<3; i++) {
+      birds.push({
+        x: Math.random()*canvas.width,
+        y: 100 + Math.random()*200,
+        s: 0.5 + Math.random()*0.5,
+        phase: Math.random()*2*Math.PI
+      });
+    }
   }
 
   function typeText(txt, cb) {
     comm.textContent = '';
     comm.style.opacity = '1';
-    let i=0;
+    let i = 0;
     (function step(){
       if(i < txt.length) {
         comm.textContent += txt[i++];
-        setTimeout(step,40);
+        setTimeout(step, 40);
       } else if(cb) cb();
     })();
   }
   function showComment(txt, cb) {
-    typeText(txt, ()=>{
-      setTimeout(()=>{
-        comm.style.opacity='0';
+    typeText(txt, () => {
+      setTimeout(() => {
+        comm.style.opacity = '0';
         if(cb) cb();
-      },2000);
+      }, 2000);
     });
   }
 
   function showClubs() {
-    const d = Math.hypot(ball.x-hole.x, ball.y-hole.y);
+    const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
     ui.innerHTML = '<div style="margin-bottom:6px;color:#e8d5a8;">Choose club</div>';
     let opts;
-    if(shots === 0 && d > 210) opts = ['The Big Dog','Fairway Finder'];
-    else if(d > 210) opts = ['Fairway Finder','Pin Seeker'];
-    else if(d > 160) opts = ['Pin Seeker','Escape Artist'];
-    else if(d > 80)  opts = ['Escape Artist','Flat Stick'];
-    else opts = ['Flat Stick'];
-    opts.forEach(name=>{
-      const c = clubs.find(x=>x.name===name);
+    if(shots === 0 && d > 220) opts = ['The Big Dog', 'The Fairway Finder'];
+    else if(d > 220)      opts = ['The Fairway Finder', 'The Pin Seeker'];
+    else if(d > 200)      opts = ['The Pin Seeker', 'The Escape Artist'];
+    else if(d > 100)      opts = ['The Escape Artist', 'The Flat Stick'];
+    else                  opts = ['The Flat Stick'];
+    opts.forEach(name => {
+      const c = clubs.find(x => x.name === name);
       const b = document.createElement('button');
-      b.className='button';
-      b.innerHTML=`<strong>${c.name}</strong><small>up to ${c.dist} yd</small>`;
-      b.onclick = ()=>pickClub(c);
+      b.className = 'button';
+      b.innerHTML = `<strong>${c.name}</strong><small>up to ${c.dist} yd</small>`;
+      b.onclick = () => pickClub(c);
       ui.appendChild(b);
     });
   }
@@ -131,7 +135,7 @@
   function pickClub(c) {
     selected = c;
     isAiming = true;
-    showComment(`Grabbing the ${c.name}.`, null);
+    showComment(`Rolling out ${c.name}.`);
     ui.innerHTML = '';
   }
 
@@ -139,14 +143,13 @@
     if(!isPowering) return;
     power += powerDir * (2 * selected.swing);
     if(power >= selected.dist || power <= 0) powerDir *= -1;
-    powerFill.style.width = (power/selected.dist*100)+'%';
+    powerFill.style.width = (power/selected.dist*100) + '%';
     requestAnimationFrame(oscillate);
   }
   function onDown(e) {
     if(!isAiming || inMotion) return;
     isPowering = true;
-    power = 0;
-    powerDir = 1;
+    power = 0; powerDir = 1;
     powerBar.style.display = 'block';
     powerStart = Date.now();
     oscillate();
@@ -156,7 +159,7 @@
     const r = canvas.getBoundingClientRect();
     const mx = e.clientX - r.left,
           my = e.clientY - r.top;
-    aimAngle = (selected.name !== 'Flat Stick')
+    aimAngle = (selected.name !== 'The Flat Stick')
       ? Math.atan2(my - ball.y, mx - ball.x)
       : Math.atan2(hole.y - ball.y, hole.x - ball.x);
   }
@@ -166,8 +169,8 @@
     powerBar.style.display = 'none';
     if(power > 5) {
       let angle = aimAngle;
-      if(selected.name !== 'Flat Stick') {
-        angle += Math.sin((Date.now()-powerStart)/300)*0.3;
+      if(selected.name !== 'The Flat Stick') {
+        angle += Math.sin((Date.now() - powerStart)/300)*0.3;
       } else {
         angle += (Math.random()-0.5)*0.2;
       }
@@ -178,57 +181,43 @@
       inMotion = true;
       shots++;
       showComment(
-        `${selected.name} took you ${shotDist} yd. ${encourage[Math.floor(Math.random()*encourage.length)]}`,
+        `${selected.name} went ${shotDist} yd. ${encourage[Math.floor(Math.random()*encourage.length)]}`,
         showClubs
       );
-      isAiming=false;
-      powerFill.style.width='0%';
+      isAiming = false;
+      powerFill.style.width = '0%';
     }
   }
 
   function update() {
     if(inMotion) {
-      ball.x += ball.vx;
-      ball.y += ball.vy;
-      ball.vx *= 0.98;
-      ball.vy *= 0.98;
-      if(Math.hypot(ball.vx,ball.vy)<0.5 || (selected.name==='Flat Stick' && ball.y < hole.y)) {
-        inMotion=false;
+      ball.x += ball.vx; ball.y += ball.vy;
+      ball.vx *= 0.98; ball.vy *= 0.98;
+      if(Math.hypot(ball.vx, ball.vy) < 0.5
+         || (selected.name === 'The Flat Stick' && ball.y < hole.y)) {
+        inMotion = false;
         placeBall();
       }
     }
-    clouds.forEach(o=>{o.x+=o.s; if(o.x>canvas.width+o.r) o.x=-o.r;});
-    birds.forEach(b=>{b.x+=b.s; b.phase+=0.2; b.y+=Math.sin(b.phase); if(b.x>canvas.width+50) b.x=-50;});
+    clouds.forEach(o => { o.x += o.s; if(o.x > canvas.width + o.r) o.x = -o.r; });
+    birds.forEach(b => { b.x += b.s; b.phase += 0.2; b.y += Math.sin(b.phase); if(b.x > canvas.width + 50) b.x = -50; });
   }
   function placeBall() {
-    const d = Math.hypot(ball.x-hole.x, ball.y-hole.y);
-    if(d<20) return showComment('You sank it. Bogey never looked so good.');
+    const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
+    if(d < 20) return showComment('You sank it. Bogey never looked so good.');
     showClubs();
   }
 
   function draw() {
-    const w=canvas.width, h=canvas.height;
+    const w = canvas.width, h = canvas.height;
     // sky
-    const sky=ctx.createLinearGradient(0,0,0,h);
-    sky.addColorStop(0,'#FF6B35'); sky.addColorStop(1,'#FF8C42');
-    ctx.fillStyle=sky; ctx.fillRect(0,0,w,h);
+    const sky = ctx.createLinearGradient(0,0,0,h);
+    sky.addColorStop(0,'#FF6B35');
+    sky.addColorStop(1,'#FF8C42');
+    ctx.fillStyle = sky; ctx.fillRect(0,0,w,h);
     // sun
     ctx.fillStyle='#FFD700'; ctx.beginPath(); ctx.arc(w/2,120,60,0,2*Math.PI); ctx.fill();
     // clouds
-    clouds.forEach(o=>{ctx.fillStyle='rgba(255,255,255,0.7)';ctx.beginPath();ctx.ellipse(o.x,o.y,o.r,o.r*0.6,0,0,2*Math.PI);ctx.fill();});
-    // fairway
-    ctx.fillStyle='#6B8E23'; ctx.fillRect(w*0.35,0,w*0.3,h);
-    // bunker
-    const by=start.y - (240/250)*(start.y-hole.y);
-    const bx=w*0.35+0.09*w;
-    ctx.fillStyle='#DEB887'; ctx.beginPath(); ctx.ellipse(bx,by,50,30,0,0,2*Math.PI); ctx.fill();
-    // trees
-    for(let i=0;i<5;i++){const ty=start.y-i*((start.y-hole.y)/4);ctx.fillStyle='#8B4513';ctx.fillRect(w*0.35-30,ty,10,40);ctx.fillStyle='#228B22';ctx.beginPath();ctx.arc(w*0.35-25,ty,25,0,2*Math.PI);ctx.fill();}
-    // beach
-    ctx.fillStyle='#FFEBCD';ctx.fillRect(w*0.65,0,w*0.35,h);
-    // water hazard
-    ctx.fillStyle='#4A90E2';ctx.fillRect(w*0.65,water.y,water.w,water.h);
-    // green
-    ctx.fillStyle='#90EE90';ctx.beginPath();ctx.arc(hole.x,hole.y,80,0,2*Math.PI);ctx.fill();ctx.fillStyle='#000';ctx.beginPath();ctx.arc(hole.x,hole.y,8,0,2*Math
+    clouds.forEach(o=>{ ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(o.x,o.y,o.r,o.r*0.6,0,0,2*Math.P
 
-                                                                                                                                          
+                                                                                            
