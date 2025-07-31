@@ -1,0 +1,22 @@
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  background: linear-gradient(to top, #FDF5D9, #FAD0C4);
+  color: #0B1F2A;
+}
+#game-container {
+  text-align: center;
+  padding: 20px;
+}
+button {
+  background-color: #D43D3D;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 20px;
+}

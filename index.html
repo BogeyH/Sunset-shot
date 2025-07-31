@@ -1,199 +1,22 @@
-<!DOCTYPE html><html lang="en">
+
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bogey Hound: Sunset Shot</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
-    body, html { margin:0; padding:0; overflow:hidden; background:#000; font-family:'Space Grotesk',sans-serif; }
-    canvas { display:block; touch-action:none; }
-    .brand-logo { position:absolute; top:20px; left:50%; transform:translateX(-50%); background:#f4e5c2; color:#2c5530; padding:8px 16px; border-radius:20px; font-weight:700; font-size:16px; z-index:10; }
-    #ui { position:absolute; top:60px; left:20px; color:#f4e5c2; font-weight:500; z-index:10; }
-    .button { background:#f4e5c2; color:#2c5530; border:none; padding:12px 18px; margin:6px; cursor:pointer; border-radius:25px; font-size:14px; font-weight:600; transition:all .3s; text-align:left; }
-    .button small { display:block; font-size:12px; color:#2c5530; opacity:0.8; }
-    .button:hover { background:#e8d5a8; transform:translateY(-2px); }
-    #powerBar { position:absolute; bottom:80px; left:50%; transform:translateX(-50%); width:250px; height:25px; background:rgba(255,255,255,0.2); border:2px solid #f4e5c2; border-radius:15px; display:none; overflow:hidden; z-index:10; }
-    #powerFill { width:0; height:100%; background:linear-gradient(90deg,#4CAF50,#FFC107,#f44336); transition:width .1s; border-radius:12px; }
-    #commentary { position:absolute; bottom:140px; left:50%; transform:translateX(-50%); background:rgba(44,85,48,0.9); color:#f4e5c2; padding:12px 16px; border-radius:15px; max-width:300px; font-weight:500; white-space:pre-wrap; opacity:0; transition:opacity .3s; text-align:center; z-index:10; }
-    @media(max-width:768px){ #ui,#commentary{left:10px;right:10px;transform:none;} #powerBar{width:200px;bottom:60px;} }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bogey Hound: Sunset Round</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="brand-logo">🐕 BOGEY HOUND</div>
-  <canvas id="game"></canvas>
-  <div id="ui"></div>
-  <div id="powerBar"><div id="powerFill"></div></div>
-  <div id="commentary"></div>
-  <script>
-    (() => {
-      const canvas = document.getElementById('game');
-      const ctx    = canvas.getContext('2d');
-      const ui     = document.getElementById('ui');
-      const powerBar  = document.getElementById('powerBar');
-      const powerFill = document.getElementById('powerFill');
-      const comm      = document.getElementById('commentary');// Clubs set to reach in two shots
-  const clubs = [
-    { name: 'The Big Dog',      dist: 300, swing: 3, offTee: true },
-    { name: 'The Fairway Finder', dist: 260, swing: 1 },
-    { name: 'The Pin Seeker',     dist: 200, swing: 2 },
-    { name: 'The Escape Artist',  dist: 120, swing: 1 },
-    { name: 'The Flat Stick',     dist: 40,  swing: 1 }
-  ];
-  const encourage = [
-    'Chill roll—nice and easy.',
-    'Smooth flow, keep it up.',
-    'That felt good.',
-    'Right on vibe.'
-  ];
-
-  let hole, start, treePos, water;
-  let ball = { x: 0, y: 0, vx: 0, vy: 0 };
-  let selected = null;
-  let isAiming = false, isPowering = false;
-  let power = 0, aimAngle = 0, powerDir = 1;
-  let inMotion = false, shots = 0;
-  let clouds = [], birds = [];
-  let powerStart = 0;
-
-  function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    hole  = { x: canvas.width/2, y: 80 };
-    start = { x: canvas.width/2, y: canvas.height - 80 };
-    treePos = { x: canvas.width * 0.2, y: (start.y + hole.y)/2 };
-    const totalDist = start.y - hole.y;
-    const y150 = start.y - (150/400) * totalDist;
-    const y350 = start.y - (350/400) * totalDist;
-    water = { x: canvas.width*0.65, y: y350, w: canvas.width*0.3, h: y150 - y350 };
-    ball.x = start.x;
-    ball.y = start.y;
-  }
-
-  function initClouds() { clouds = []; for (let i=0; i<6; i++) clouds.push({ x:Math.random()*canvas.width, y:Math.random()*canvas.height*0.4+50, s:0.3+Math.random()*0.4, r:30+Math.random()*20 }); }
-  function initBirds() { birds = []; for (let i=0; i<3; i++) birds.push({ x:Math.random()*canvas.width, y:100+Math.random()*200, s:0.5+Math.random()*0.5, phase:Math.random()*2*Math.PI }); }
-
-  function typeText(txt, cb) {
-    comm.textContent = '';
-    comm.style.opacity = '1';
-    let i = 0;
-    (function step() {
-      if (i < txt.length) { comm.textContent += txt[i++]; setTimeout(step, 40); }
-      else if (cb) cb();
-    })();
-  }
-  function showComment(txt, cb) {
-    typeText(txt, () => { setTimeout(() => { comm.style.opacity = '0'; if (cb) cb(); }, 2000); });
-  }
-
-  function showClubs() {
-    const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
-    ui.innerHTML = '<div style="margin-bottom:6px;color:#e8d5a8;">Choose club</div>';
-    let opts;
-    if (shots === 0 && d > clubs[0].dist) opts = ['The Big Dog','The Fairway Finder'];
-    else if (d > clubs[1].dist) opts = ['The Fairway Finder','The Pin Seeker'];
-    else if (d > clubs[2].dist) opts = ['The Pin Seeker','The Escape Artist'];
-    else if (d > clubs[3].dist) opts = ['The Escape Artist','The Flat Stick'];
-    else opts = ['The Flat Stick'];
-    opts.forEach(name => {
-      const c = clubs.find(x => x.name === name);
-      const b = document.createElement('button'); b.className = 'button';
-      b.innerHTML = `<strong>${c.name}</strong><small>up to ${c.dist} yd</small>`;
-      b.onclick = () => pickClub(c);
-      ui.appendChild(b);
-    });
-  }
-
-  function pickClub(c) { selected = c; isAiming = true; showComment(`Pulling out ${c.name}.`); ui.innerHTML = ''; }
-
-  function oscillate() {
-    if (!isPowering) return;
-    power += powerDir * (2 * selected.swing);
-    if (power >= selected.dist || power <= 0) powerDir *= -1;
-    powerFill.style.width = (power/selected.dist*100) + '%';
-    requestAnimationFrame(oscillate);
-  }
-  function onDown(e) { if (!isAiming || inMotion) return; isPowering = true; power = 0; powerDir = 1; powerStart = Date.now(); powerBar.style.display = 'block'; oscillate(); }
-  function onMove(e) {
-    if (!isAiming) return;
-    const r = canvas.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top;
-    aimAngle = (selected.name !== 'The Flat Stick')
-      ? Math.atan2(my - ball.y, mx - ball.x)
-      : Math.atan2(hole.y - ball.y, hole.x - ball.x);
-  }
-  function onUp(e) {
-    if (!isPowering) return; isPowering = false; powerBar.style.display = 'none';
-    if (power > 5) {
-      let angle = aimAngle;
-      if (selected.name !== 'The Flat Stick') angle += Math.sin((Date.now()-powerStart)/300)*0.3;
-      else angle += (Math.random()-0.5)*0.2;
-      const factor = 0.012;
-      ball.vx = Math.cos(angle)*power*factor;
-      ball.vy = Math.sin(angle)*power*factor;
-      const shotDist = Math.round(power*0.8);
-      inMotion = true; shots++;
-      showComment(`${selected.name} went ${shotDist} yd. ${encourage[Math.floor(Math.random()*encourage.length)]}`, showClubs);
-      isAiming = false; powerFill.style.width = '0%';
-    }
-  }
-
-  function update() {
-    if (inMotion) {
-      ball.x += ball.vx; ball.y += ball.vy;
-      ball.vx *= 0.98; ball.vy *= 0.98;
-      if (Math.hypot(ball.vx, ball.vy) < 0.5 || (selected.name === 'The Flat Stick' && ball.y < hole.y)) { inMotion = false; placeBall(); }
-    }
-    clouds.forEach(o => { o.x += o.s; if (o.x > canvas.width + o.r) o.x = -o.r; });
-    birds.forEach(b => { b.x += b.s; b.phase += 0.2; b.y += Math.sin(b.phase); if (b.x > canvas.width + 50) b.x = -50; });
-  }
-  function placeBall() {
-    const d = Math.hypot(ball.x - hole.x, ball.y - hole.y);
-    if (d < 20) return showComment('You sank it. Bogey never looked so good.');
-    showClubs();
-  }
-
-  function draw() {
-    const w = canvas.width, h = canvas.height;
-    const sky = ctx.createLinearGradient(0,0,0,h);
-    sky.addColorStop(0,'#FF6B35'); sky.addColorStop(1,'#FF8C42');
-    ctx.fillStyle = sky; ctx.fillRect(0,0,w,h);
-    ctx.fillStyle = '#FFD700'; ctx.beginPath(); ctx.arc(w/2,120,60,0,2*Math.PI); ctx.fill();
-    clouds.forEach(o => { ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(o.x,o.y,o.r,o.r*0.6,0,0,2*Math.PI); ctx.fill(); });
-    ctx.fillStyle = '#6B8E23'; ctx.fillRect(w*0.35,0,w*0.3,h);
-    const by = start.y - (240/400)*(start.y - hole.y);
-    const bx = w*0.35 + 0.1*w;
-    ctx.fillStyle = '#DEB887'; ctx.beginPath(); ctx.ellipse(bx,by,50,30,0,0,2*Math.PI); ctx.fill();
-    ctx.fillStyle = 'saddlebrown'; ctx.fillRect(treePos.x-8, treePos.y,16,40);
-    ctx.fillStyle = '#228B22'; ctx.beginPath(); ctx.arc(treePos.x, treePos.y,30,0,2*Math.PI); ctx.fill();
-    ctx.fillStyle = '#FFEBCD'; ctx.fillRect(w*0.65,0,w*0.35,h);
-    ctx.fillStyle = '#4A90E2'; ctx.fillRect(water.x,water.y,water.w, water.h);
-    ctx.fillStyle = '#90EE90'; ctx.beginPath(); ctx.arc(hole.x,hole.y,80,0,2*Math.PI); ctx.fill();
-    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(hole.x,hole.y,8,0,2*Math.PI); ctx.fill();
-    ctx.fillStyle = '#F5DEB3'; ctx.beginPath(); ctx.arc(start.x,start.y,25,0,2*Math.PI); ctx.fill();
-    ctx.fillStyle = 'saddlebrown'; ctx.fillRect(start.x-2,start.y-10,4,20);
-    ctx.font = '40px Space Grotesk'; ctx.fillText('🐕',20,h-40);
-    ctx.fillStyle = '#FFF'; ctx.beginPath(); ctx.arc(ball.x,ball.y,8,0,2*Math.PI); ctx.fill();
-    if (isAiming && !inMotion) {
-      ctx.strokeStyle='rgba(255,255,225,0.8)'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(ball.x,ball.y);
-      const ex = ball.x + Math.cos(aimAngle)*100;
-      const ey = ball.y + Math.sin(aimAngle)*100;
-      ctx.lineTo(ex,ey); ctx.stroke();
-    }
-  }
-
-  window.addEventListener('resize',resize);
-  canvas.addEventListener('pointerdown',onDown);
-  canvas.addEventListener('pointermove',onMove);
-  canvas.addEventListener('pointerup',onUp);
-  canvas.addEventListener('touchstart',e=>{ e.preventDefault(); onDown(e.touches[0]); });
-  canvas.addEventListener('touchmove',e=>{ e.preventDefault(); onMove(e.touches[0]); });
-  canvas.addEventListener('touchend',e=>{ e.preventDefault(); onUp(e.changedTouches[0]); });
-  canvas.addEventListener('contextmenu',e=>e.preventDefault());
-
-  resize(); initClouds(); initBirds(); showComment('The last hole of the day. The sun’s down, vibes up.', showClubs);
-  (function loop(){ update(); draw(); requestAnimationFrame(loop); })();
-})();
-
-  </script>
+  <div id="game-container">
+    <div id="scene"></div>
+    <div id="choices"></div>
+    <div id="commentary"></div>
+    <button id="start-btn">Start Sunset Round</button>
+  </div>
+  <audio id="bg-music" loop>
+    <source src="assets/lofi.mp3" type="audio/mpeg">
+  </audio>
+  <script src="js/game.js"></script>
 </body>
 </html>
