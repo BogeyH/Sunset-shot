@@ -54,7 +54,7 @@ window.onload = () => {
     powerSlider.style.display = 'none';
 
     choicesEl.innerHTML = '';
-    commentaryEl.innerText = '';
+    commentaryEl.innerText = ''; document.getElementById('game-container').appendChild(playAgainBtn);
 
     if (scene === 'tee') {
       sceneEl.innerText = COPY.intro_text;
@@ -93,7 +93,7 @@ window.onload = () => {
       ctx.arc(finalX, y, 5, 0, Math.PI * 2);
       ctx.fillStyle = '#D43D3D';
       ctx.fill();
-      t += 0.01;
+      t += 0.005;
       if (t <= 1) {
         requestAnimationFrame(draw);
       } else {
@@ -122,7 +122,7 @@ window.onload = () => {
 
     animateArc(() => {
       document.getElementById('commentary').innerText = COPY[club + '_result'];
-      setTimeout(() => showScene('approach'), 1500);
+      setTimeout(() => waitForInput('approach'), 2500);
     }, angle, power);
   };
 
@@ -142,7 +142,7 @@ window.onload = () => {
 
     animateArc(() => {
       document.getElementById('commentary').innerText = COPY[club + '_result'];
-      setTimeout(() => showScene('putt'), 1500);
+      setTimeout(() => waitForInput('putt'), 2500);
     }, angle, power);
   };
 
@@ -156,7 +156,7 @@ window.onload = () => {
     }
 
     document.getElementById('commentary').innerText = COPY[powerType + '_result'];
-    setTimeout(() => showScene('finish'), 2000);
+    setTimeout(() => showScene('finish'), 3000);
   };
 
   function showFinalScore() {
@@ -187,6 +187,23 @@ window.onload = () => {
         ${COPY.join}
       </button>
     `;
-    commentaryEl.innerText = '';
+    commentaryEl.innerText = ''; document.getElementById('game-container').appendChild(playAgainBtn);
   }
 };
+
+  function waitForInput(nextScene) {
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = "Take the Shot";
+    confirmBtn.onclick = () => {
+      confirmBtn.remove();
+      showScene(nextScene);
+    };
+    document.getElementById('choices').appendChild(confirmBtn);
+  }
+
+  const playAgainBtn = document.createElement('button');
+  playAgainBtn.textContent = "Play Again";
+  playAgainBtn.style.marginTop = "20px";
+  playAgainBtn.onclick = () => {
+    location.reload();
+  };
