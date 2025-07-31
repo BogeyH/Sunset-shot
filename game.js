@@ -7,12 +7,7 @@ let gameState = {
   vibeTitle: ''
 };
 
-const canvas = document.createElement('canvas');
-canvas.width = 800;
-canvas.height = 200;
-canvas.style.display = 'none';
-canvas.id = 'arcCanvas';
-document.body.appendChild(canvas);
+const canvas = document.getElementById('arcCanvas');
 const ctx = canvas.getContext('2d');
 
 document.getElementById('start-btn').addEventListener('click', () => {
@@ -32,22 +27,22 @@ function showScene(scene) {
   commentaryEl.innerText = '';
 
   if (scene === 'tee') {
-    sceneEl.innerText = "The last hole of the day. The sun's down. The vibes are up. Let’s walk it in.";
+    sceneEl.innerText = COPY.intro_text;
     choicesEl.innerHTML = `
-      <button onclick="takeShot('driver')">The Big Dog (Driver)</button>
-      <button onclick="takeShot('3wood')">The Fairway Finder (3-Wood)</button>
+      <button onclick="takeShot('driver')">${COPY.driver}</button>
+      <button onclick="takeShot('3wood')">${COPY['3wood']}</button>
     `;
   } else if (scene === 'approach') {
-    sceneEl.innerText = "You’re in range now. Let’s get it on the dance floor.";
+    sceneEl.innerText = COPY.approach_text;
     choicesEl.innerHTML = `
-      <button onclick="takeApproach('iron')">The Approach Pro (Iron)</button>
-      <button onclick="takeApproach('wedge')">The Escape Artist (Wedge)</button>
+      <button onclick="takeApproach('iron')">${COPY.iron}</button>
+      <button onclick="takeApproach('wedge')">${COPY.wedge}</button>
     `;
   } else if (scene === 'putt') {
-    sceneEl.innerText = "Just you and the cup.";
+    sceneEl.innerText = COPY.putt_text;
     choicesEl.innerHTML = `
-      <button onclick="takePutt('soft')">Play it safe</button>
-      <button onclick="takePutt('firm')">Give it a run</button>
+      <button onclick="takePutt('soft')">${COPY.soft}</button>
+      <button onclick="takePutt('firm')">${COPY.firm}</button>
     `;
   } else if (scene === 'finish') {
     showFinalScore();
@@ -79,39 +74,36 @@ function animateArc(callback) {
 
 function takeShot(club) {
   gameState.shot1 = club;
-  const commentaryEl = document.getElementById('commentary');
   if (club === 'driver') {
     gameState.finalScore += 1;
-    gameState.vibeTitle = 'The Lumberjack';
+    gameState.vibeTitle = 'lumberjack';
   } else {
-    gameState.vibeTitle = 'The Sundowner';
+    gameState.vibeTitle = 'sundowner';
   }
   animateArc(() => {
-    commentaryEl.innerText = (club === 'driver') ? "Boom. Might be in the trees, but you let it fly." : "Smooth swing. Right down the middle.";
+    document.getElementById('commentary').innerText = COPY[club + '_result'];
     setTimeout(() => showScene('approach'), 1500);
   });
 }
 
 function takeApproach(club) {
   gameState.shot2 = club;
-  const commentaryEl = document.getElementById('commentary');
   if (club === 'wedge') {
     gameState.finalScore += 1;
-    if (gameState.vibeTitle === '') gameState.vibeTitle = 'The Beach Bum';
+    if (gameState.vibeTitle === '') gameState.vibeTitle = 'beach_bum';
   }
   animateArc(() => {
-    commentaryEl.innerText = (club === 'wedge') ? "That’s one way to get there." : "Landed soft. You’re putting.";
+    document.getElementById('commentary').innerText = COPY[club + '_result'];
     setTimeout(() => showScene('putt'), 1500);
   });
 }
 
 function takePutt(power) {
   gameState.putt = power;
-  const commentaryEl = document.getElementById('commentary');
   if (power === 'firm') {
     gameState.finalScore += 1;
   }
-  commentaryEl.innerText = (power === 'firm') ? "Just missed, but a solid tap-in." : "Drip... drip... in.";
+  document.getElementById('commentary').innerText = COPY[power + '_result'];
   setTimeout(() => showScene('finish'), 2000);
 }
 
@@ -120,27 +112,27 @@ function showFinalScore() {
   const choicesEl = document.getElementById('choices');
   const commentaryEl = document.getElementById('commentary');
   const score = gameState.finalScore;
-  const vibe = gameState.vibeTitle || 'The Sundowner';
+  const vibe = gameState.vibeTitle || 'sundowner';
 
   let scoreComment = '';
   if (score <= 4) {
-    scoreComment = `A strong ${score}! That calls for a round at the 19th.`;
+    scoreComment = COPY.score_4_or_less.replace('{score}', score);
   } else if (score === 5) {
-    scoreComment = `You walked away with a ${score}. A bogey never looked so good.`;
+    scoreComment = COPY.score_5.replace('{score}', score);
   } else {
-    scoreComment = `That’s a ${score}. More time to enjoy the walk. We call that a win.`;
+    scoreComment = COPY.score_above_5.replace('{score}', score);
   }
 
   sceneEl.innerHTML = `
     <h2>${scoreComment}</h2>
-    <h3>Your vibe: ${vibe}</h3>
+    <h3>Your vibe: ${COPY[vibe]}</h3>
   `;
   choicesEl.innerHTML = `
     <button onclick="window.location.href='https://bogeyhound.com?utm_source=sunsetround&utm_campaign=vibe'">
-      Shop the Sunset Drop
+      ${COPY.shop}
     </button>
     <button onclick="window.location.href='https://bogeyhound.com/join?utm_source=sunsetround&utm_campaign=vibe'">
-      Join the Pack
+      ${COPY.join}
     </button>
   `;
   commentaryEl.innerText = '';
