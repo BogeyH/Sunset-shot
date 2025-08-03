@@ -1,54 +1,32 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bogey Hound: Sunset Round</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bogey Hound - The Walk In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="game-container">
-    <canvas id="arcCanvas" width="800" height="200" style="display: none;"></canvas>
-    <div id="scene"></div>
-    <div id="choices"></div>
-    <div id="commentary"></div>
-    <button id="start-btn">Start Sunset Round</button>
+  <div class="game-container">
+    <div class="screen active" id="title-screen">
+      <h1>The sun is down,<br>the vibes are up,<br>let's walk it in.</h1>
+      <div class="subtitle">Bogey Hound - 18th hole</div>
+      <div class="dog-silhouette" aria-hidden="true"></div>
+      <div class="hole-layout" aria-hidden="true">
+        <div class="trees"></div>
+        <div class="water"></div>
+        <div class="sand"></div>
+        <div class="green">
+          <div class="flag"></div>
+        </div>
+      </div>
+      <button class="button" id="start-button">Let's Walk It In</button>
+    </div>
+    <!-- Other screens would go here (truncated for brevity) -->
   </div>
-  <audio id="bg-music" loop>
-    <source src="assets/lofi.mp3" type="audio/mpeg" />
-  </audio>
-
-  <!-- Define copy before game.js loads -->
-  <script>
-    const COPY = {
-      intro_text: "The last hole of the day. The sun's down. The vibes are up. Let’s walk it in.",
-      driver: "The Big Dog (Driver): For when you feel like letting it fly.",
-      "3wood": "The Fairway Finder (3-Wood): A more sensible route. But hey, we don’t judge.",
-      driver_result: "Boom. Might be in the trees, but you let it fly.",
-      "3wood_result": "Smooth swing. Right down the middle.",
-      approach_text: "You’re in range now. Let’s get it on the dance floor.",
-      iron: "The Approach Pro (Iron): Time to dance.",
-      wedge: "The Escape Artist (Wedge): Get creative.",
-      iron_result: "Landed soft. You’re putting.",
-      wedge_result: "That’s one way to get there.",
-      putt_text: "Just you and the cup.",
-      soft: "Play it safe",
-      firm: "Give it a run",
-      soft_result: "Drip... drip... in.",
-      firm_result: "Just missed, but a solid tap-in.",
-      score_4_or_less: "A strong {score}! That calls for a round at the 19th.",
-      score_5: "You walked away with a {score}. A bogey never looked so good.",
-      score_above_5: "That’s a {score}. More time to enjoy the walk. We call that a win.",
-      lumberjack: "The Lumberjack",
-      beach_bum: "The Beach Bum",
-      sundowner: "The Sundowner",
-      shop: "Shop the Sunset Drop",
-      join: "Join the Pack"
-    };
-  </script>
-
-  <!-- Load JS after DOM and COPY are ready -->
-  <script src="js/game.js"></script>
+  <script src="script.js" defer></script>
 </body>
 </html>
