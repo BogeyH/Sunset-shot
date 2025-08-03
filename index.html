@@ -11,11 +11,12 @@
 </head>
 <body>
   <div class="game-container">
+    <!-- Screens are dynamically rendered by script.js -->
     <div class="screen active" id="title-screen">
       <h1>The sun is down,<br>the vibes are up,<br>let's walk it in.</h1>
       <div class="subtitle">Bogey Hound - 18th hole</div>
-      <div class="dog-silhouette" aria-hidden="true"></div>
-      <div class="hole-layout" aria-hidden="true">
+      <div class="dog-silhouette"></div>
+      <div class="hole-layout">
         <div class="trees"></div>
         <div class="water"></div>
         <div class="sand"></div>
@@ -25,7 +26,7 @@
       </div>
       <button class="button" id="start-button">Let's Walk It In</button>
     </div>
-    <!-- Other screens would go here (truncated for brevity) -->
+    <!-- Other screens injected here -->
   </div>
   <script src="script.js" defer></script>
 </body>
