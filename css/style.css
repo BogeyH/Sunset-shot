@@ -1,13 +1,1 @@
-body {
-  font-family: 'Space Grotesk', sans-serif;
-  background: #FDF0D5;
-}
-.button {
-  background: #003049;
-  color: #FDF0D5;
-  padding: 1em 2em;
-  border: none;
-  border-radius: 25px;
-  font-size: 1.2em;
-  cursor: pointer;
-}
+/* Move all your CSS here from the inline <style> */
