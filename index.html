@@ -10,403 +10,366 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    /* subtle background */
     body { background: radial-gradient(1200px 800px at 50% -10%, #123247, #0B1F2A 60%); }
-    /* die with pips */
     .die { position: relative; }
     .pip { width:10px; height:10px; border-radius:50%; background: currentColor; position:absolute; opacity:.95; }
   </style>
 </head>
 <body class="text-white antialiased">
-  <div id="root"></div>  <script type="text/babel">
-    const { useMemo, useState, useRef, useEffect } = React;
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useMemo, useState, useEffect } = React;// --- helpers ---
+const rollMany = (n) => Array.from({ length: n }, () => 1 + Math.floor(Math.random()*6));
+const sum = (a) => a.reduce((x,y)=>x+y,0);
+const needIn = (a) => a.includes(1) && a.includes(4);
 
-    // ---------- Helpers ----------
-    const rollMany = (n) => Array.from({ length: n }, () => 1 + Math.floor(Math.random()*6));
-    const sum = (arr) => arr.reduce((a,b)=>a+b,0);
-    const needIn = (arr) => arr.includes(1) && arr.includes(4);
+function App(){
+  const [phase, setPhase] = useState('setup');
+  const [diceCount, setDiceCount] = useState(5); // 5, 6, 7
+  const [names, setNames] = useState(['','']);
 
-    const nextPow2 = (n) => { let p=1; while(p<n) p*=2; return p; };
+  // tournament state
+  const [active, setActive] = useState([]); // players still in
+  const [roundNum, setRoundNum] = useState(1);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [scores, setScores] = useState({}); // {name: score} for current round (or tie-break)
+  const [tieGroup, setTieGroup] = useState(null); // array of names if tie for lowest
+  const [history, setHistory] = useState([]); // [{round, scores, eliminated}]
 
-    // ---------- UI: App ----------
-    function App(){
-      const [phase, setPhase] = useState('setup');
-      const [diceCount, setDiceCount] = useState(5); // 5, 6, or 7
-      const [names, setNames] = useState(['','']);
-      const [players, setPlayers] = useState([]);
+  // turn state
+  const [turnName, setTurnName] = useState('');
+  const [dice, setDice] = useState([]);
+  const [kept, setKept] = useState([]);
+  const [selectKeep, setSelectKeep] = useState([]);
+  const [roundOver, setRoundOver] = useState(false);
+  const [message, setMessage] = useState('');
+  const [score, setScore] = useState(0);
 
-      const [roundIndex, setRoundIndex] = useState(0);
-      const [matchIndex, setMatchIndex] = useState(0);
-      const [bracket, setBracket] = useState([]); // array of rounds; each round is [{a,b,winner,as,bs}]
+  // ---- setup ----
+  const addPlayer = () => setNames(n => [...n, '']);
+  const removePlayer = (i) => setNames(n => n.length>2 ? n.filter((_,idx)=>idx!==i) : n);
 
-      // game state for current player
-      const [turnName, setTurnName] = useState('');
-      const [dice, setDice] = useState([]);
-      const [kept, setKept] = useState([]);
-      const [selectKeep, setSelectKeep] = useState([]);
-      const [roundOver, setRoundOver] = useState(false);
-      const [message, setMessage] = useState('');
-      const [score, setScore] = useState(0);
+  const startTournament = () => {
+    const players = names.map(s=>s.trim()).filter(Boolean);
+    if (players.length < 2) return alert('Need at least 2 players.');
+    setActive(players);
+    setRoundNum(1);
+    setCurrentIndex(0);
+    setScores({});
+    setTieGroup(null);
+    setHistory([]);
+    setPhase('play');
+  };
 
-      // -------- Setup handlers --------
-      const addPlayer = () => setNames((n)=>[...n, '']);
-      const removePlayer = (i) => setNames((n)=> n.length>2 ? n.filter((_,idx)=>idx!==i) : n);
+  // begin first turn when entering play
+  useEffect(()=>{
+    if (phase !== 'play') return;
+    // who plays now
+    const roster = tieGroup ? tieGroup : active;
+    if (!roster.length) return;
+    if (currentIndex >= roster.length) return; // will be advanced by evaluation
+    beginTurn(roster[currentIndex]);
+  }, [phase, currentIndex, tieGroup]);
 
-      const startTournament = () => {
-        const cleaned = names.map(s=>s.trim()).filter(Boolean);
-        if (cleaned.length < 2) return alert('Need at least 2 players.');
-        setPlayers(cleaned);
-        const size = nextPow2(cleaned.length);
-        const padded = [...cleaned];
-        while(padded.length < size) padded.push('(BYE)');
-        // seed into first round matches
-        const matches = [];
-        for(let i=0;i<padded.length;i+=2){
-          matches.push({ a: padded[i], b: padded[i+1], winner: null, as: null, bs: null });
-        }
-        setBracket([matches]);
-        setRoundIndex(0);
-        setMatchIndex(0);
-        setPhase('play');
-      };
+  function beginTurn(name){
+    setTurnName(name);
+    setDice(rollMany(diceCount));
+    setKept(Array(diceCount).fill(false));
+    setSelectKeep(Array(diceCount).fill(false));
+    setRoundOver(false);
+    setScore(0);
+    setMessage('Select at least 1 die to keep, then Keep & Roll.');
+  }
 
-      // prepare a player turn
-      const beginTurn = (name) => {
-        setTurnName(name);
-        setDice(rollMany(diceCount));
-        setKept(Array(diceCount).fill(false));
-        setSelectKeep(Array(diceCount).fill(false));
-        setRoundOver(false);
-        setMessage('Select at least 1 die to keep, then Keep & Roll.');
-        setScore(0);
-      };
+  // ---- roll/keep logic ----
+  const keptCount = useMemo(()=> kept.filter(Boolean).length, [kept]);
 
-      // on entering play phase or when match changes, start first player if not BYE
-      useEffect(()=>{
-        if(phase !== 'play') return;
-        const current = bracket[roundIndex][matchIndex];
-        // If BYE, auto-advance
-        if(current.a === '(BYE)' && current.b === '(BYE)'){
-          completeMatch(current, 0, 0, null);
-          return;
-        }
-        if(current.a === '(BYE)'){
-          completeMatch(current, 0, 0, current.b);
-          return;
-        }
-        if(current.b === '(BYE)'){
-          completeMatch(current, 0, 0, current.a);
-          return;
-        }
-        // Otherwise start with A if not yet scored
-        if(current.as === null) beginTurn(current.a);
-        else if(current.bs === null) beginTurn(current.b);
-      }, [phase, roundIndex, matchIndex]);
+  const onToggle = (i) => {
+    if (roundOver || kept[i]) return;
+    const next = [...selectKeep];
+    next[i] = !next[i];
+    setSelectKeep(next);
+  };
 
-      // ---------- Turn logic ----------
-      const keptCount = useMemo(()=> kept.filter(Boolean).length, [kept]);
+  const keepAndRoll = () => {
+    if (roundOver) return;
+    const toKeep = selectKeep.filter(Boolean).length;
+    if (keptCount < dice.length && toKeep === 0){
+      setMessage('You must keep at least 1 die before rolling.');
+      return;
+    }
+    const newKept = kept.map((k,i)=> k || selectKeep[i]);
+    const remaining = newKept.reduce((a,k)=>a+(k?0:1),0);
+    if (remaining === 0){
+      const finalScore = needIn(dice) ? sum(dice) : 0;
+      setRoundOver(true);
+      setScore(finalScore);
+      setMessage(finalScore>0 ? 'Round over. You are in.' : 'Round over. No 1+4. Score 0.');
+      return;
+    }
+    const rolled = rollMany(remaining);
+    const nextDice=[]; let r=0;
+    for (let i=0;i<dice.length;i++) nextDice[i] = newKept[i] ? dice[i] : rolled[r++];
+    setDice(nextDice);
+    setKept(newKept);
+    setSelectKeep(Array(dice.length).fill(false));
+    setMessage('Nice. Pick at least one more to keep.');
+  };
 
-      const onToggle = (i) => {
-        if (roundOver || kept[i]) return;
-        const next = [...selectKeep];
-        next[i] = !next[i];
-        setSelectKeep(next);
-      };
+  const endNow = () => {
+    if (roundOver) return;
+    const finalScore = needIn(dice) ? sum(dice) : 0;
+    setKept(Array(dice.length).fill(true));
+    setSelectKeep(Array(dice.length).fill(false));
+    setRoundOver(true);
+    setScore(finalScore);
+    setMessage(finalScore>0 ? 'Round over. You are in.' : 'Round over. No 1+4. Score 0.');
+  };
 
-      const keepAndRoll = () => {
-        if (roundOver) return;
-        const toKeep = selectKeep.filter(Boolean).length;
-        if (keptCount < dice.length && toKeep === 0) {
-          setMessage('You must keep at least 1 die before rolling.');
-          return;
-        }
-        const newKept = kept.map((k,i)=> k || selectKeep[i]);
-        const remaining = newKept.reduce((a,k)=>a+(k?0:1),0);
-        if (remaining === 0){
-          const final = [...dice];
-          const finalScore = needIn(final) ? sum(final) : 0;
-          setRoundOver(true);
-          setScore(finalScore);
-          setMessage(finalScore>0 ? 'Round over. You are in.' : 'Round over. No 1+4. Score 0.');
-          return;
-        }
-        const rolled = rollMany(remaining);
-        const nextDice = [];
-        let r=0;
-        for(let i=0;i<dice.length;i++) nextDice[i] = newKept[i] ? dice[i] : rolled[r++];
-        setDice(nextDice);
-        setKept(newKept);
-        setSelectKeep(Array(dice.length).fill(false));
-        setMessage('Nice. Pick at least one more to keep.');
-      };
+  const submitScore = () => {
+    const roster = tieGroup ? tieGroup : active;
+    const name = roster[currentIndex];
+    const nextScores = { ...scores, [name]: score };
+    setScores(nextScores);
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < roster.length){
+      // next player in roster
+      setCurrentIndex(nextIndex);
+    } else {
+      // everyone in this round (or tie-break) has scored → evaluate
+      evaluateRound(nextScores, roster);
+    }
+  };
 
-      const endNow = () => {
-        if (roundOver) return;
-        const final = dice;
-        const finalScore = needIn(final) ? sum(final) : 0;
-        setKept(Array(dice.length).fill(true));
-        setSelectKeep(Array(dice.length).fill(false));
-        setRoundOver(true);
-        setScore(finalScore);
-        setMessage(finalScore>0 ? 'Round over. You are in.' : 'Round over. No 1+4. Score 0.');
-      };
+  function evaluateRound(sc, roster){
+    // find lowest score among roster
+    const entries = roster.map(n=> ({ name:n, s: sc[n] ?? 0 }));
+    const min = Math.min(...entries.map(e=> e.s));
+    const lows = entries.filter(e=> e.s === min).map(e=> e.name);
+    if (lows.length > 1){
+      // tie for lowest → tie-break among these players only
+      setTieGroup(lows);
+      setScores({});
+      setCurrentIndex(0);
+      return;
+    }
+    // eliminate the single lowest
+    const eliminated = lows[0];
+    const survivors = active.filter(n=> n !== eliminated);
+    // save history of this round
+    setHistory(h => [...h, { round: roundNum, scores: sc, eliminated }]);
+    if (survivors.length === 1){
+      setActive(survivors);
+      setPhase('done');
+      return;
+    }
+    // advance to next round
+    setActive(survivors);
+    setRoundNum(r => r+1);
+    setScores({});
+    setTieGroup(null);
+    setCurrentIndex(0);
+  }
 
-      const submitScore = () => {
-        const rounds = [...bracket];
-        const m = { ...rounds[roundIndex][matchIndex] };
-        if (m.as === null && turnName === m.a) m.as = score;
-        else if (m.bs === null && turnName === m.b) m.bs = score;
-        else {
-          // if out of order, try to fill empty
-          if (m.as === null) m.as = score; else m.bs = score;
-        }
-        rounds[roundIndex][matchIndex] = m;
-        setBracket(rounds);
-        // if both scored, decide winner
-        if (m.as !== null && m.bs !== null){
-          let win = null;
-          if (m.as > m.bs) win = m.a;
-          else if (m.bs > m.as) win = m.b;
-          else win = 'TIE';
-          if (win === 'TIE'){
-            // sudden death: both replay until not equal
-            beginTurn(m.a);
-            return; // keep A replaying, we will overwrite as
-          }
-          completeMatch(m, m.as, m.bs, win);
-        } else {
-          // start next player's turn
-          const nextName = (m.as === null) ? m.a : m.b;
-          beginTurn(nextName);
-        }
-      };
+  // ---- views ----
+  if (phase === 'setup') return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-xl bg-white/10 backdrop-blur rounded-3xl p-5 shadow-xl">
+        <h1 className="text-2xl font-semibold mb-1">One‑Four Dice</h1>
+        <p className="text-sm text-white/80 mb-4">Pick rules. Add players. Lowest score is out each round.</p>
 
-      function completeMatch(matchObj, as, bs, winner){
-        const rounds = [...bracket];
-        const m = { ...rounds[roundIndex][matchIndex] };
-        m.as = as; m.bs = bs; m.winner = winner;
-        rounds[roundIndex][matchIndex] = m;
-        setBracket(rounds);
-
-        // move to next match or next round
-        const lastMatchInRound = matchIndex === rounds[roundIndex].length - 1;
-        if (lastMatchInRound){
-          // build next round from winners
-          const winners = rounds[roundIndex].map(x=> x.winner ?? x.a);
-          if (winners.length === 1){
-            setPhase('done');
-            return;
-          }
-          const nextMatches = [];
-          for(let i=0;i<winners.length;i+=2){
-            nextMatches.push({ a: winners[i], b: winners[i+1] ?? '(BYE)', winner: null, as: null, bs: null });
-          }
-          rounds.push(nextMatches);
-          setBracket(rounds);
-          setRoundIndex(roundIndex+1);
-          setMatchIndex(0);
-        } else {
-          setMatchIndex(matchIndex+1);
-        }
-      }
-
-      // ---------- Views ----------
-      if (phase === 'setup') return (
-        <div className="min-h-screen flex items-center justify-center px-4 py-8">
-          <div className="w-full max-w-xl bg-white/10 backdrop-blur rounded-3xl p-5 shadow-xl">
-            <h1 className="text-2xl font-semibold mb-1">One‑Four Dice</h1>
-            <p className="text-sm text-white/80 mb-4">Pick rules. Add players. Start bracket.</p>
-
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-white/10 rounded-2xl p-3">
-                <div className="text-xs text-white/70 mb-1">Dice per round</div>
-                <div className="flex gap-2">
-                  <button className={`${diceCount===5?'bg-white text-[#0B1F2A]':'bg-white/20'} px-3 py-2 rounded-xl font-semibold`} onClick={()=>setDiceCount(5)}>5</button>
-                  <button className={`${diceCount===6?'bg-white text-[#0B1F2A]':'bg-white/20'} px-3 py-2 rounded-xl font-semibold`} onClick={()=>setDiceCount(6)}>6</button>
-                  <button className={`${diceCount===7?'bg-white text-[#0B1F2A]':'bg-white/20'} px-3 py-2 rounded-xl font-semibold`} onClick={()=>setDiceCount(7)}>7</button>
-                </div>
-              </div>
-              <div className="bg-white/10 rounded-2xl p-3">
-                <div className="text-xs text-white/70 mb-1">Players</div>
-                <div className="flex items-center gap-2">
-                  <button className="px-3 py-2 rounded-xl bg-white/20" onClick={addPlayer}>+ Add</button>
-                </div>
-              </div>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-white/10 rounded-2xl p-3">
+            <div className="text-xs text-white/70 mb-1">Dice per round</div>
+            <div className="flex gap-2">
+              <button className={`${diceCount===5?'bg-white text-[#0B1F2A]':'bg-white/20'} px-3 py-2 rounded-xl font-semibold`} onClick={()=>setDiceCount(5)}>5</button>
+              <button className={`${diceCount===6?'bg-white text-[#0B1F2A]':'bg-white/20'} px-3 py-2 rounded-xl font-semibold`} onClick={()=>setDiceCount(6)}>6</button>
+              <button className={`${diceCount===7?'bg-white text-[#0B1F2A]':'bg-white/20'} px-3 py-2 rounded-xl font-semibold`} onClick={()=>setDiceCount(7)}>7</button>
             </div>
-
-            <div className="space-y-2 max-h-64 overflow-auto pr-1">
-              {names.map((n,i)=> (
-                <div key={i} className="flex gap-2 items-center">
-                  <input className="flex-1 px-3 py-2 rounded-xl bg-white/15 focus:bg-white/20 outline-none" placeholder={`Player ${i+1} name`} value={n} onChange={(e)=> setNames(names.map((v,idx)=> idx===i? e.target.value : v))} />
-                  <button className="px-3 py-2 rounded-xl bg-white/15" onClick={()=>removePlayer(i)}>Remove</button>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 flex justify-between items-center">
-              <RulesSummary />
-              <button className="px-4 py-3 rounded-2xl bg-[#D43D3D] font-semibold" onClick={startTournament}>Start</button>
+          </div>
+          <div className="bg-white/10 rounded-2xl p-3">
+            <div className="text-xs text-white/70 mb-1">Players</div>
+            <div className="flex items-center gap-2">
+              <button className="px-3 py-2 rounded-xl bg-white/20" onClick={addPlayer}>+ Add</button>
             </div>
           </div>
         </div>
-      );
 
-      if (phase === 'play'){
-        const current = bracket[roundIndex][matchIndex];
-        const header = `${current.a} vs ${current.b}`;
-        const who = (current.as===null) ? current.a : (current.bs===null ? current.b : '');
-        const bothScored = current.as!==null && current.bs!==null;
-
-        return (
-          <div className="min-h-screen px-4 py-6 flex flex-col items-center">
-            <div className="w-full max-w-5xl grid md:grid-cols-[1fr_420px] gap-4">
-              <Bracket rounds={bracket} roundIndex={roundIndex} matchIndex={matchIndex} />
-
-              <div className="bg-white/10 rounded-3xl p-4">
-                <h2 className="text-xl font-semibold mb-1">{header}</h2>
-                <div className="text-sm text-white/80 mb-3">Round {roundIndex+1} • Match {matchIndex+1}</div>
-
-                {!bothScored && (
-                  <>
-                    <div className="text-sm text-white/80 mb-2">Current: <span className="font-semibold">{turnName || who}</span></div>
-                    <DiceTray dice={dice} kept={kept} selectKeep={selectKeep} onToggle={(i)=> onToggle(i)} disabled={roundOver} />
-
-                    <div className="grid grid-cols-3 gap-2 mb-2">
-                      <Stat label="Kept" value={`${kept.filter(Boolean).length}/${dice.length}`} />
-                      <Stat label="Score" value={roundOver ? score : '—'} hint={roundOver ? (score>0 ? 'in' : 'no 1+4') : undefined} />
-                      <Stat label="Dice" value={dice.length} />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button className={`flex-1 px-4 py-3 rounded-2xl font-semibold ${(!roundOver && (kept.filter(Boolean).length<dice.length) && selectKeep.some(Boolean))? 'bg-[#D43D3D]':'bg-white/20'}`} onClick={keepAndRoll} disabled={roundOver || !(kept.filter(Boolean).length<dice.length) || !selectKeep.some(Boolean)}>Keep & Roll</button>
-                      <button className="px-4 py-3 rounded-2xl bg-white/10 font-semibold" onClick={endNow} disabled={roundOver}>End Now</button>
-                      <button className="px-4 py-3 rounded-2xl bg-white text-[#0B1F2A] font-semibold" onClick={()=> beginTurn(turnName || who)}>Re‑roll</button>
-                    </div>
-
-                    <p className="mt-2 text-sm text-white/80">{message}</p>
-
-                    {roundOver && (
-                      <button className="mt-3 w-full px-4 py-3 rounded-2xl bg-white text-[#0B1F2A] font-semibold" onClick={submitScore}>Submit Score</button>
-                    )}
-                  </>
-                )}
-
-                {bothScored && (
-                  <div className="mt-2">
-                    <div className="text-sm mb-2">Scores submitted. Advancing…</div>
-                    <button className="px-4 py-3 rounded-2xl bg-white text-[#0B1F2A] font-semibold" onClick={()=> completeMatch(current, current.as, current.bs, current.as>current.bs? current.a : current.bs>current.as? current.b : 'TIE')}>Advance</button>
-                  </div>
-                )}
-              </div>
+        <div className="space-y-2 max-h-64 overflow-auto pr-1">
+          {names.map((n,i)=> (
+            <div key={i} className="flex gap-2 items-center">
+              <input className="flex-1 px-3 py-2 rounded-xl bg-white/15 focus:bg-white/20 outline-none" placeholder={`Player ${i+1} name`} value={n} onChange={(e)=> setNames(names.map((v,idx)=> idx===i? e.target.value : v))} />
+              <button className="px-3 py-2 rounded-xl bg-white/15" onClick={()=>removePlayer(i)}>Remove</button>
             </div>
-          </div>
-        );
-      }
-
-      if (phase === 'done'){
-        const champ = bracket[bracket.length-1][0].winner;
-        return (
-          <div className="min-h-screen flex items-center justify-center px-4 py-8">
-            <div className="w-full max-w-md bg-white/10 rounded-3xl p-6 text-center">
-              <h2 className="text-2xl font-semibold mb-2">Champion</h2>
-              <div className="text-4xl font-bold mb-4">{champ}</div>
-              <button className="px-4 py-3 rounded-2xl bg-[#D43D3D] font-semibold" onClick={()=>{ setPhase('setup'); setBracket([]); setRoundIndex(0); setMatchIndex(0); }}>New Tournament</button>
-            </div>
-          </div>
-        );
-      }
-    }
-
-    // ---------- Smaller UI ----------
-    function Stat({label, value, hint}){
-      return (
-        <div className="bg-white/10 rounded-2xl p-3 text-center">
-          <div className="text-xs uppercase text-white/70">{label}</div>
-          <div className="text-xl font-semibold">{value}</div>
-          {hint && <div className="text-[10px] text-white/70">{hint}</div>}
-        </div>
-      );
-    }
-
-    function RulesSummary(){
-      return (
-        <div className="text-sm text-white/80">
-          <div className="font-semibold">Rules</div>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Roll 5, 6, or 7 dice. Keep at least 1 each roll.</li>
-            <li>Round ends when all dice are kept.</li>
-            <li>You must have a 1 and a 4 to score.</li>
-            <li>If in, score = sum of all dice. Else score = 0.</li>
-            <li>Single‑elimination bracket. Higher score advances.</li>
-          </ul>
-        </div>
-      );
-    }
-
-    function DiceTray({ dice, kept, selectKeep, onToggle, disabled }){
-      return (
-        <div className="grid gap-2 mb-4" style={{gridTemplateColumns: `repeat(${dice.length}, minmax(36px, 1fr))`}}>
-          {dice.map((v,i)=> (
-            <Die key={i} value={v} kept={kept[i]} selected={selectKeep[i]} onClick={()=> onToggle(i)} disabled={disabled} />
           ))}
         </div>
-      );
-    }
 
-    function Die({ value, kept, selected, onClick, disabled }){
-      const state = kept ? 'bg-white text-[#0B1F2A]' : selected ? 'bg-[#D43D3D] text-white scale-105' : 'bg-white/15 text-white';
-      return (
-        <button onClick={onClick} disabled={disabled||kept} className={`die aspect-square rounded-2xl flex items-center justify-center text-xl font-semibold shadow transition-transform ${state} relative overflow-hidden`}
-          aria-label={`Die ${value}${kept? ' kept': selected? ' selected':''}`}>
-          <span className="relative z-10">{value}</span>
-          {/* pips layout */}
-          <Pips n={value} />
-        </button>
-      );
-    }
+        <div className="mt-4 flex justify-between items-center">
+          <RulesSummary />
+          <button className="px-4 py-3 rounded-2xl bg-[#D43D3D] font-semibold" onClick={startTournament}>Start</button>
+        </div>
+      </div>
+    </div>
+  );
 
-    function Pips({n}){
-      const spots = {
-        1: [[50,50]],
-        2: [[25,25],[75,75]],
-        3: [[25,25],[50,50],[75,75]],
-        4: [[25,25],[75,25],[25,75],[75,75]],
-        5: [[25,25],[75,25],[50,50],[25,75],[75,75]],
-        6: [[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]
-      }[n];
-      return (
-        <>
-          {spots.map(([x,y],i)=> <span key={i} className="pip" style={{left:`calc(${x}% - 5px)`, top:`calc(${y}% - 5px)`}} />)}
-        </>
-      );
-    }
+  if (phase === 'play'){
+    const roster = tieGroup ? tieGroup : active;
+    const who = roster[currentIndex] || '';
+    const everyoneScored = roster.every(n => scores[n] !== undefined);
+    return (
+      <div className="min-h-screen px-4 py-6 flex flex-col items-center">
+        <div className="w-full max-w-5xl grid md:grid-cols-[1fr_420px] gap-4">
+          <Leaderboard active={active} scores={scores} roundNum={roundNum} tieGroup={tieGroup} history={history} current={who} />
 
-    function Bracket({ rounds, roundIndex, matchIndex }){
-      return (
-        <div className="bg-white/10 rounded-3xl p-4 overflow-auto">
-          <h2 className="text-xl font-semibold mb-3">Bracket</h2>
-          <div className="grid gap-4" style={{gridTemplateColumns:`repeat(${rounds.length}, minmax(180px, 1fr))`}}>
-            {rounds.map((matches,r)=> (
-              <div key={r} className="space-y-3">
-                {matches.map((m,i)=> {
-                  const active = r===roundIndex && i===matchIndex;
-                  return (
-                    <div key={i} className={`rounded-2xl p-3 ${active? 'bg-white text-[#0B1F2A]':'bg-white/10'}`}>
-                      <div className="font-semibold truncate">{m.a}</div>
-                      <div className="text-sm">{m.as===null? '—' : m.as}</div>
-                      <div className="mt-2 font-semibold truncate">{m.b}</div>
-                      <div className="text-sm">{m.bs===null? '—' : m.bs}</div>
-                      {m.winner && <div className="mt-2 text-xs opacity-80">Winner: {m.winner}</div>}
-                    </div>
-                  );
-                })}
+          <div className="bg-white/10 rounded-3xl p-4">
+            <h2 className="text-xl font-semibold mb-1">Round {roundNum}{tieGroup? ' • Tie‑break' : ''}</h2>
+            <div className="text-sm text-white/80 mb-3">Current: <span className="font-semibold">{who}</span></div>
+
+            <DiceTray dice={dice} kept={kept} selectKeep={selectKeep} onToggle={(i)=> onToggle(i)} disabled={roundOver} />
+
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <Stat label="Kept" value={`${kept.filter(Boolean).length}/${dice.length}`} />
+              <Stat label="Score" value={roundOver ? score : '—'} hint={roundOver ? (score>0 ? 'in' : 'no 1+4') : undefined} />
+              <Stat label="Dice" value={dice.length} />
+            </div>
+
+            <div className="flex gap-2">
+              <button className={`flex-1 px-4 py-3 rounded-2xl font-semibold ${(!roundOver && (kept.filter(Boolean).length<dice.length) && selectKeep.some(Boolean))? 'bg-[#D43D3D]':'bg-white/20'}`} onClick={keepAndRoll} disabled={roundOver || !(kept.filter(Boolean).length<dice.length) || !selectKeep.some(Boolean)}>Keep & Roll</button>
+              <button className="px-4 py-3 rounded-2xl bg-white/10 font-semibold" onClick={endNow} disabled={roundOver}>End Now</button>
+              <button className="px-4 py-3 rounded-2xl bg-white text-[#0B1F2A] font-semibold" onClick={()=> beginTurn(who)}>Re‑roll</button>
+            </div>
+
+            <p className="mt-2 text-sm text-white/80">{message}</p>
+
+            {roundOver && (
+              <button className="mt-3 w-full px-4 py-3 rounded-2xl bg-white text-[#0B1F2A] font-semibold" onClick={submitScore}>Submit Score</button>
+            )}
+
+            {everyoneScored && !tieGroup && (
+              <div className="mt-3 text-sm text-white/80">All scores in. Lowest will be eliminated.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'done'){
+    const champ = active[0];
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md bg-white/10 rounded-3xl p-6 text-center">
+          <h2 className="text-2xl font-semibold mb-2">Champion</h2>
+          <div className="text-4xl font-bold mb-4">{champ}</div>
+          <button className="px-4 py-3 rounded-2xl bg-[#D43D3D] font-semibold" onClick={()=>{ setPhase('setup'); setActive([]); setRoundNum(1); setCurrentIndex(0); setScores({}); setTieGroup(null); setHistory([]); }}>New Tournament</button>
+        </div>
+      </div>
+    );
+  }
+}
+
+function Stat({label, value, hint}){
+  return (
+    <div className="bg-white/10 rounded-2xl p-3 text-center">
+      <div className="text-xs uppercase text-white/70">{label}</div>
+      <div className="text-xl font-semibold">{value}</div>
+      {hint && <div className="text-[10px] text-white/70">{hint}</div>}
+    </div>
+  );
+}
+
+function RulesSummary(){
+  return (
+    <div className="text-sm text-white/80">
+      <div className="font-semibold">Rules</div>
+      <ul className="list-disc pl-5 space-y-1">
+        <li>Roll 5, 6, or 7 dice. Keep at least 1 each roll.</li>
+        <li>Round ends when all dice are kept.</li>
+        <li>You must have a 1 and a 4 to score.</li>
+        <li>If in, score = sum of all dice. Else score = 0.</li>
+        <li>Each round, the lowest score is eliminated. Ties for lowest go to a tie‑break.</li>
+      </ul>
+    </div>
+  );
+}
+
+function DiceTray({ dice, kept, selectKeep, onToggle, disabled}){
+  return (
+    <div className="grid gap-2 mb-4" style={{gridTemplateColumns: `repeat(${dice.length}, minmax(36px, 1fr))`}}>
+      {dice.map((v,i)=> (
+        <Die key={i} value={v} kept={kept[i]} selected={selectKeep[i]} onClick={()=> onToggle(i)} disabled={disabled} />
+      ))}
+    </div>
+  );
+}
+
+function Die({ value, kept, selected, onClick, disabled }){
+  const state = kept ? 'bg-white text-[#0B1F2A]' : selected ? 'bg-[#D43D3D] text-white scale-105' : 'bg-white/15 text-white';
+  return (
+    <button onClick={onClick} disabled={disabled||kept} className={`die aspect-square rounded-2xl flex items-center justify-center text-xl font-semibold shadow transition-transform ${state} relative overflow-hidden`} aria-label={`Die showing ${value}${kept? ' kept': selected? ' selected':''}`}>
+      {/* Remove number text; render pips only */}
+      <Pips n={value} />
+    </button>
+  );
+}
+
+function Pips({n}){
+  const spots = {
+    1: [[50,50]],
+    2: [[25,25],[75,75]],
+    3: [[25,25],[50,50],[75,75]],
+    4: [[25,25],[75,25],[25,75],[75,75]],
+    5: [[25,25],[75,25],[50,50],[25,75],[75,75]],
+    6: [[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]
+  }[n];
+  return (
+    <>
+      {spots.map(([x,y],i)=> <span key={i} className="pip" style={{left:`calc(${x}% - 5px)`, top:`calc(${y}% - 5px)`}} />)}
+    </>
+  );
+}
+
+function Leaderboard({ active, scores, roundNum, tieGroup, history, current }){
+  return (
+    <div className="bg-white/10 rounded-3xl p-4 overflow-auto">
+      <h2 className="text-xl font-semibold mb-3">Leaderboard</h2>
+      <div className="space-y-2">
+        {active.map((name)=>{
+          const s = scores[name];
+          const isCurrent = current === name;
+          const inTie = tieGroup ? tieGroup.includes(name) : false;
+          return (
+            <div key={name} className={`rounded-2xl p-3 flex items-center justify-between ${isCurrent? 'bg-white text-[#0B1F2A]':'bg-white/10'}`}>
+              <div className="font-semibold truncate">{name}</div>
+              <div className="text-sm opacity-80">{s===undefined? '—' : s}{inTie? ' • tie' : ''}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {history.length>0 && (
+        <div className="mt-4">
+          <div className="text-sm font-semibold mb-2">Rounds</div>
+          <div className="space-y-2 max-h-48 overflow-auto pr-1">
+            {history.map((r,i)=> (
+              <div key={i} className="bg-white/5 rounded-2xl p-3 text-sm">
+                <div className="mb-1">Round {r.round} • Eliminated: <span className="font-semibold">{r.eliminated}</span></div>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(r.scores).map(([n,s])=> (
+                    <span key={n} className="px-2 py-1 bg-white/10 rounded-lg">{n}: {s}</span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
-      );
-    }
+      )}
+    </div>
+  );
+}
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
-  </script></body>
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+
+  </script>
+</body>
 </html>
