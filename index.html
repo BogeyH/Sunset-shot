@@ -1,599 +1,657 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>In or Out</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            navy: "#0B1F2A",
-            cream: "#FDF5D9",
-            red: "#D43D3D",
-          },
-          boxShadow: {
-            soft: "0 6px 24px rgba(0,0,0,0.18)",
-          },
-          keyframes: {
-            jitter: {
-              '0%,100%': { transform: 'translate(0,0) rotate(0deg)' },
-              '25%': { transform: 'translate(-2px,1px) rotate(-4deg)' },
-              '50%': { transform: 'translate(2px,-1px) rotate(4deg)' },
-              '75%': { transform: 'translate(-1px,2px) rotate(-2deg)' },
-            },
-            pop: {
-              '0%': { transform: 'scale(0.8)', opacity: 0 },
-              '60%': { transform: 'scale(1.05)', opacity: 1 },
-              '100%': { transform: 'scale(1)' },
-            },
-            confetti: {
-              '0%': { transform: 'translateY(-20vh) rotate(0deg)' , opacity: 1 },
-              '100%': { transform: 'translateY(120vh) rotate(540deg)', opacity: 1 },
-            },
-          },
-          animation: {
-            jitter: 'jitter 0.7s ease-in-out',
-            pop: 'pop 320ms ease-out',
-            confetti: 'confetti 2.4s linear forwards',
-          }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Bogey Hound – The Walk In</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!-- GSAP + Howler -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+
+<style>
+:root{
+  --navy:#0B1F2A; --cream:#FDF0D5; --red:#C1121F; --burg:#780000;
+  --sky:#669BBC; --white:#FFFFFF; --slate:#6D8196; --gray:#4A4A4A;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--navy);color:var(--cream);font-family:"Space Grotesk",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+button{font:600 16px "Space Grotesk";padding:14px 18px;border-radius:16px;border:0;cursor:pointer;background:var(--cream);color:var(--navy);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+button.secondary{background:transparent;color:var(--cream);border:2px solid rgba(253,240,213,.5)}
+button:active{transform:translateY(1px)}
+h1,h2,h3{font-family:"Libre Baskerville",serif;margin:0}
+h1{font-size:clamp(28px,6vw,44px);line-height:1.05}
+h2{font-size:clamp(20px,4.2vw,28px);opacity:.9}
+.small{font-size:12px;opacity:.7}
+a{color:var(--cream)}
+.hidden{display:none}
+#app{min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
+.header,.footer{padding:14px 16px}
+.header{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,0))}
+.brand{display:flex;gap:10px;align-items:center}
+.brand .icon{width:36px;height:36px;border-radius:10px;background:var(--cream);display:grid;place-items:center;color:var(--navy);font-weight:800}
+.card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(6px);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.center{display:grid;place-items:center;padding:16px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:720px){.grid2{grid-template-columns:1fr 1fr}}
+.badge{display:inline-flex;gap:8px;align-items:center;font-weight:600;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}
+.meterWrap{position:relative;width:min(640px,94vw);height:160px}
+.meter{position:absolute;inset:0;padding:14px}
+.meter canvas{width:100%;height:100%;border-radius:16px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.18)}
+.hud{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pill{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font-weight:600}
+.big{font-size:18px}
+.scene{position:relative;overflow:hidden}
+.backdrop{position:absolute;inset:0;z-index:-1}
+.sunset{position:absolute;inset:0;
+  background:
+   radial-gradient(1000px 420px at 70% 30%, rgba(255,183,77,.35), rgba(255,183,77,0) 70%),
+   linear-gradient(180deg, #ffb385 0%, #f28e8e 40%, #8b5fbf 75%, #0b1f2a 100%);
+}
+.fairway{position:absolute;left:0;right:0;bottom:-10%;height:70%;
+  background:
+   radial-gradient(120% 100% at 50% 120%, rgba(0,0,0,.3), transparent 55%),
+   linear-gradient(180deg, #315949 0%, #1f3d34 60%, #17342d 100%);
+  clip-path:ellipse(90% 70% at 50% 100%);
+}
+.water{position:absolute;right:-20%;top:40%;width:70%;height:40%;background:linear-gradient(180deg,#2e6d93,#244f6b);border-radius:40% 50% 0 0}
+.beach{position:absolute;right:-18%;top:60%;width:70%;height:18%;background:#d1b692;border-radius:45% 55% 0 0;filter:brightness(1.05)}
+.trees{position:absolute;left:-8%;top:20%;bottom:12%;width:40%;background:repeating-linear-gradient(90deg,transparent 0 12px,rgba(18,42,35,.6) 12px 28px)}
+.bunker{position:absolute;right:18%;bottom:26%;width:18%;height:8%;background:#d8c3a5;border-radius:50%}
+.green{position:absolute;right:15%;bottom:20%;width:25%;height:12%;background:#3a6f57;border-radius:50%}
+.flag{position:absolute;right:25%;bottom:29%;width:0;height:0;border-left:10px solid var(--red);border-top:7px solid transparent;border-bottom:7px solid transparent}
+.ball{position:absolute;width:10px;height:10px;border-radius:50%;background:white;box-shadow:0 0 0 2px rgba(0,0,0,.15)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 16px;border-radius:12px;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18)}
+.cta{display:flex;gap:10px;flex-wrap:wrap}
+.hr{height:1px;border:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.24),transparent)}
+.leader{width:100%;border-collapse:collapse}
+.leader th,.leader td{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
+.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:6px 10px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="brand">
+      <div class="icon">BH</div>
+      <div>
+        <div style="font-weight:800">Bogey Hound</div>
+        <div class="small">The Walk In</div>
+      </div>
+    </div>
+    <div class="badge"><span id="hud-shots">Shots: 0</span><span>•</span><span id="hud-dist">409 yds</span></div>
+  </div>
+
+  <main id="scene" class="scene center">
+    <!-- dynamic content goes here -->
+  </main>
+
+  <div class="footer">
+    <div class="small">Vibe-first golf. Cream + navy forever.</div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast hidden"></div>
+
+<script>
+/* ========= Audio (placeholder-safe) ========= */
+const SFX = {
+  // Use tiny silent buffers if blocked; files can be swapped later
+  hit: new Howl({ src: [], volume: .5 }),
+  splash: new Howl({ src: [], volume: .5 }),
+  sand: new Howl({ src: [], volume: .5 }),
+  cup: new Howl({ src: [], volume: .6 }),
+  bg: new Howl({ src: [], loop:true, volume:.25 })
+};
+
+/* ========= Utilities ========= */
+const $ = (sel,root=document)=>root.querySelector(sel);
+const $$ = (sel,root=document)=>[...root.querySelectorAll(sel)];
+const rnd = (a,b)=>Math.random()*(b-a)+a;
+const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
+const choice = arr => arr[Math.floor(Math.random()*arr.length)];
+const formatYds = d => (d>=100 ? Math.round(d) : Math.max(1,Math.round(d))).toString()+" yds";
+
+const PROFANITY = ["ASS","FCK","FUC","CUM","DCK","TIT","PSS","CNT","NIG","KKK","GAY","SEX","PEN","PUS","COK","FUQ"];
+
+/* ========= Game State ========= */
+const STATE = {
+  dist: 409,
+  shots: 0,
+  penalties: 0,
+  history: [],
+  onGreen: false,
+  vibeTags: new Set(),
+  finished: false
+};
+
+const CLUBS = {
+  driver:     {name:"The Big Dog", kind:"aggr", max:260, anglePenalty:0.20, perf:0.08, speed:1.6, copy:"Let it fly. Direction optional."},
+  drivingIr:  {name:"The Fairway Finder", kind:"safe", max:210, anglePenalty:0.02, perf:0.16, speed:1.15, copy:"Sensible. Short grass energy."},
+  wood3:      {name:"The Long Shot", kind:"aggr", max:235, anglePenalty:0.20, perf:0.08, speed:1.45, copy:"Get it dancing."},
+  iron5:      {name:"The Layup", kind:"safe", max:190, anglePenalty:0.02, perf:0.16, speed:1.1, copy:"Smart is sexy."},
+  iron6:      {name:"The Nudge", kind:"aggr", max:170, anglePenalty:0.20, perf:0.08, speed:1.35, copy:"Thread the needle."},
+  iron8:      {name:"The Cozy One", kind:"safe", max:135, anglePenalty:0.02, perf:0.18, speed:1.0, copy:"Pin-high vibes."},
+  pw:         {name:"The Flighted Wedge", kind:"aggr", max:115, anglePenalty:0.20, perf:0.1, speed:1.0, copy:"Send it, softly."},
+  lw60:       {name:"The Float", kind:"safe", max:90,  anglePenalty:0.02, perf:0.2, speed:0.9, copy:"Up, down, close."},
+  putter:     {name:"Putter", kind:"putt", max:60, anglePenalty:0, perf:0.35, speed:0.7, copy:"Walk it in."}
+};
+
+const COMMENTARY = {
+  fairway: ["Striped it down the middle.","Pure. A thing of beauty.","Center-cut glide.","Short grass appreciation club."],
+  rough:   ["Found the long stuff, but you can fluff that up.","Not bad—grass with ambition.","It’ll sit up just fine."],
+  trees:   ["In the pine straw. They’re 90% air, right?","Forest detour. Scenic route!"],
+  water:   ["Nice day for a swim.","Tide took that one.","Splash with style."],
+  sand:    ["Vacation vibes in the bunker.","A little beach time.","Sandy toes, steady pose."],
+  green:   ["On the dance floor.","Showtime. Two putts or better.","The walk just got quieter."],
+  cup:     ["Walked it in!","Dead center.","That sound never gets old."]
+};
+
+const OUTCOMES = {
+  TREES:"trees", ROUGH_L:"roughL", FAIRWAY:"fairway", ROUGH_R:"roughR",
+  WATER:"water", SAND:"sand", GREEN:"green", CUP:"cup"
+};
+
+/* ========= DOM & Scene Helpers ========= */
+const scene = $("#scene");
+const toast = $("#toast");
+function showToast(text, ms=1800){
+  toast.textContent = text;
+  toast.classList.remove("hidden");
+  clearTimeout(showToast._t);
+  showToast._t=setTimeout(()=>toast.classList.add("hidden"), ms);
+}
+function setHUD(){
+  $("#hud-shots").textContent = `Shots: ${STATE.shots + (STATE.finished?0:0)}`;
+  $("#hud-dist").textContent = STATE.onGreen? `${Math.round(STATE.dist)} ft` : `${Math.round(STATE.dist)} yds`;
+}
+function resetState(){
+  STATE.dist=409; STATE.shots=0; STATE.penalties=0; STATE.history=[];
+  STATE.onGreen=false; STATE.vibeTags.clear(); STATE.finished=false;
+  setHUD();
+}
+
+/* ========= Backdrop (course) ========= */
+function drawBackdrop(root){
+  root.innerHTML = `
+    <div class="backdrop">
+      <div class="sunset"></div>
+      <div class="water"></div>
+      <div class="beach"></div>
+      <div class="trees"></div>
+      <div class="fairway"></div>
+      <div class="bunker"></div>
+      <div class="green"></div>
+      <div class="flag"></div>
+    </div>`;
+}
+
+/* ========= Scenes ========= */
+function sceneTitle(){
+  scene.innerHTML = "";
+  drawBackdrop(scene);
+  const wrap = document.createElement("div");
+  wrap.className="center";
+  wrap.innerHTML = `
+    <div class="card stack" style="padding:24px;max-width:860px">
+      <div class="row">
+        <div class="badge">Bogey Hound · 18th Hole · 409 yds</div>
+      </div>
+      <h1>The sun is down,<br/>the vibes are up,<br/>let’s walk it in.</h1>
+      <p class="small">Simple choices. Smooth swings. Sunset pace.</p>
+      <div class="row">
+        <button id="start">Start</button>
+        <button class="secondary" id="leaderBtn">Leaderboard</button>
+      </div>
+    </div>`;
+  scene.appendChild(wrap);
+  gsap.from(wrap,{y:20,opacity:0,duration:.6,ease:"power2.out"});
+  $("#start").onclick=()=>{ resetState(); sceneClubSelect(); };
+  $("#leaderBtn").onclick=sceneLeaderboard;
+}
+
+function clubOptionsByDist(){
+  const d = STATE.dist;
+  if(STATE.onGreen) return [{key:"putter",data:CLUBS.putter}];
+  if(d>190) return [{key:"driver",data:CLUBS.driver},{key:"drivingIr",data:CLUBS.drivingIr}];
+  if(d>120) return [{key:"wood3",data:CLUBS.wood3},{key:"iron5",data:CLUBS.iron5}];
+  if(d>0 && d>60 && d<=120) return [{key:"iron6",data:CLUBS.iron6},{key:"iron8",data:CLUBS.iron8}];
+  if(d>0 && d<=60) return [{key:"pw",data:CLUBS.pw},{key:"lw60",data:CLUBS.lw60}];
+  return [{key:"putter",data:CLUBS.putter}];
+}
+
+function sceneClubSelect(){
+  setHUD();
+  scene.innerHTML="";
+  drawBackdrop(scene);
+  const wrap = document.createElement("div");
+  wrap.className="center";
+  const opts = clubOptionsByDist();
+  const title = STATE.onGreen?"Roll it home":"Pick your pace";
+  wrap.innerHTML = `
+    <div class="card stack" style="padding:22px;max-width:860px">
+      <div class="hud">
+        <div class="pill big">${title}</div>
+        <div class="pill">${STATE.onGreen? Math.round(STATE.dist)+" ft": formatYds(STATE.dist)}</div>
+      </div>
+      <div class="grid2" id="clubs"></div>
+    </div>
+  `;
+  scene.appendChild(wrap);
+  const grid=$("#clubs",wrap);
+  opts.forEach(({key,data})=>{
+    const c=document.createElement("div");
+    c.className="card stack";
+    c.style.padding="18px";
+    c.innerHTML = `
+      <div class="badge">${data.kind==="putt"?"PUTT":(data.kind==="aggr"?"Aggressive":"Safe")}</div>
+      <h2>${data.name}</h2>
+      <div class="small">${data.copy}</div>
+      <div class="row">
+        <div class="pill">Perfect: ${Math.round(data.perf*100)}%</div>
+        <div class="pill">Max: ${data.kind==="putt"?Math.round(data.max)+" ft":Math.round(data.max)+" yds"}</div>
+      </div>
+      <button>Use ${data.name}</button>
+    `;
+    $("button",c).onclick=()=>sceneSwing(key, data);
+    grid.appendChild(c);
+  });
+  gsap.from($$(".card",wrap),{y:16,opacity:0,stagger:.06,duration:.5,ease:"power2.out"});
+}
+
+/* ========= Swing Meter ========= */
+function sceneSwing(key, club){
+  setHUD();
+  scene.innerHTML="";
+  drawBackdrop(scene);
+
+  const wrap = document.createElement("div");
+  wrap.className="center stack";
+  wrap.innerHTML = `
+    <div class="hud">
+      <div class="pill">${club.kind==="putt"?"Putter":"Swing"} · ${club.name}</div>
+      <div class="pill">${STATE.onGreen?Math.round(STATE.dist)+" ft":formatYds(STATE.dist)}</div>
+    </div>
+    <div class="meterWrap">
+      <div class="meter"><canvas id="angle"></canvas></div>
+      <div class="meter" style="margin-top:168px"><canvas id="power"></canvas></div>
+    </div>
+    <div class="row">
+      <button id="abort" class="secondary">Back</button>
+      <button id="lock" disabled>Lock Angle</button>
+      <button id="fire" disabled>Hit</button>
+    </div>
+  `;
+  scene.appendChild(wrap);
+
+  const angleCVS = $("#angle");
+  const powerCVS = $("#power");
+  const aCtx = angleCVS.getContext("2d");
+  const pCtx = powerCVS.getContext("2d");
+
+  // fit canvas
+  [angleCVS,powerCVS].forEach(cv=>{
+    const bb = cv.getBoundingClientRect();
+    cv.width = Math.max(600,bb.width*2);
+    cv.height = Math.max(120,bb.height*2);
+  });
+
+  let anglePos=0, angleDir=1, angleLocked=false, powerPos=0, powerDir=1, raf;
+  const perf = club.perf; // center perfect window
+  const speedA = club.speed*0.018;
+  const speedP = (club.kind==="putt"? club.speed*0.010 : club.speed*0.014);
+
+  function drawAngle(){
+    const w=angleCVS.width,h=angleCVS.height;
+    aCtx.clearRect(0,0,w,h);
+    // rail
+    aCtx.fillStyle="rgba(255,255,255,.08)";
+    aCtx.fillRect(w*.06,h*.46,w*.88,h*.08);
+    // perfect window
+    const center=.5;
+    const pw = w*.88*perf;
+    const px = w*.06 + (w*.88*center - pw/2);
+    aCtx.fillStyle="rgba(212,61,61,.25)";
+    aCtx.fillRect(px,h*.46,pw,h*.08);
+    // penalty zones (aggressive anglePenalty)
+    if(club.anglePenalty>0){
+      aCtx.fillStyle="rgba(255,255,255,.10)";
+      // left and right thin bands representing hazard risk
+      aCtx.fillRect(w*.06,h*.46,w*.88*club.anglePenalty,h*.08);
+      aCtx.fillRect(w*(.94 - .88*club.anglePenalty),h*.46,w*.88*club.anglePenalty,h*.08);
+    }
+    // cursor
+    const cx = w*.06 + anglePos*w*.88;
+    aCtx.fillStyle="#fff";
+    aCtx.fillRect(cx-4,h*.42,8,h*.16);
+  }
+  function drawPower(){
+    const w=powerCVS.width,h=powerCVS.height;
+    pCtx.clearRect(0,0,w,h);
+    // rail
+    pCtx.fillStyle="rgba(255,255,255,.08)";
+    pCtx.fillRect(w*.06,h*.12,w*.88,h*.76);
+    // tick marks + distance text
+    pCtx.fillStyle="rgba(255,255,255,.35)";
+    pCtx.font="bold 28px 'Space Grotesk'";
+    pCtx.textAlign="right";
+    const max = club.max;
+    for(let i=0;i<=4;i++){
+      const y = h*.88 - (h*.76)*(i/4);
+      pCtx.fillRect(w*.06,y, w*.88, 2);
+      const unit = STATE.onGreen?"ft":"yds";
+      const dist = Math.round(max*(i/1));
+      pCtx.fillText((i===4?max:Math.round(max*i/4))+" "+unit, w*.05, y+10);
+    }
+    // perfect sweet spot for power (reuse perf)
+    const ph = h*.76*perf;
+    const py = h*.12 + (h*.76*.5 - ph/2);
+    pCtx.fillStyle="rgba(212,61,61,.25)";
+    pCtx.fillRect(w*.06,py,w*.88,ph);
+    // cursor
+    const cy = h*.88 - powerPos*h*.76;
+    pCtx.fillStyle="#fff";
+    pCtx.fillRect(w*.5-6,cy-6,12,12);
+  }
+
+  function tick(){
+    if(!angleLocked){
+      anglePos += speedA*angleDir;
+      if(anglePos>1){anglePos=1;angleDir=-1}
+      if(anglePos<0){anglePos=0;angleDir=1}
+      drawAngle();
+    } else {
+      powerPos += speedP*powerDir;
+      if(powerPos>1){powerPos=1;powerDir=-1}
+      if(powerPos<0){powerPos=0;powerDir=1}
+      drawPower();
+    }
+    raf = requestAnimationFrame(tick);
+  }
+  tick();
+
+  $("#abort").onclick=()=>{ cancelAnimationFrame(raf); sceneClubSelect(); };
+  $("#lock").disabled=false;
+  $("#lock").onclick=()=>{ angleLocked=true; $("#lock").disabled=true; $("#fire").disabled=false; };
+  $("#fire").onclick=()=>{
+    cancelAnimationFrame(raf);
+    resolveSwing(club, anglePos, powerPos);
+  };
+}
+
+/* ========= Physics-ish + Outcome ========= */
+function resolveSwing(club, a, p){
+  STATE.shots++;
+  setHUD();
+
+  // angle quality: distance from center
+  const angleErr = Math.abs(a - .5);
+  const inPerfectAngle = angleErr <= (club.perf/2);
+  const penaltyAngle = (club.kind!=="putt") && (a < club.anglePenalty || a > (1 - club.anglePenalty));
+
+  // power calc
+  const max = club.max;
+  let carry = max * p; // raw
+  const holeOutWindow = (club.kind==="putt") ? 0 : (club.kind==="aggr" ? 0.001 : 0.0001);
+  const holeOutByPower = (p>0.999 && Math.random() < holeOutWindow);
+
+  // lie penalties from previous shot
+  const prev = STATE.history[STATE.history.length-1];
+  let liePenalty = 0;
+  if(prev){
+    if(prev.outcome===OUTCOMES.TREES) liePenalty = .5;
+    else if(prev.outcome===OUTCOMES.ROUGH_L || prev.outcome===OUTCOMES.ROUGH_R) liePenalty=.1;
+    else if(prev.outcome===OUTCOMES.SAND) liePenalty=.1;
+    else if(prev.outcome===OUTCOMES.GREEN) liePenalty=.1; // long/short adjustment
+  }
+
+  // apply penalty on carry for lie (except putt which uses feet)
+  if(club.kind!=="putt") carry *= (1 - liePenalty);
+
+  // angle lateral to decide terrain
+  let lateral = (a - .5); // -0.5 left, +0.5 right scaled
+  // classify outcome by distance + lateral and hazards bands
+  let outcome = OUTCOMES.FAIRWAY;
+
+  // distance to hole after shot
+  let distBefore = STATE.dist;
+  let distAfter;
+
+  if(club.kind==="putt"){
+    // Convert remaining yds to feet for putt; 1 yd = 3 ft approximate
+    let feetRemain = Math.max(3, Math.round(STATE.dist)); // STATE.dist used as feet on green
+    let puttFeet = Math.round(club.max * p);
+    const diff = Math.abs(puttFeet - feetRemain);
+    const holed = diff <= 2; // 2 ft give radius
+    distAfter = holed ? 0 : Math.max(1, feetRemain - puttFeet);
+    outcome = holed ? OUTCOMES.CUP : OUTCOMES.GREEN;
+  } else {
+    // airborne shot
+    // Environmental caps: ensure progress to green in <= 5 shots
+    const minProgress = distBefore / (6 - Math.min(STATE.shots,5)); // ramps up
+    carry = Math.max(carry, Math.min(minProgress, max*0.92));
+
+    distAfter = Math.max(0, distBefore - carry);
+
+    // terrain by lateral + distance bands
+    if(distAfter===0 && (inPerfectAngle || holeOutByPower)) outcome = OUTCOMES.CUP;
+    else {
+      const farBand = distAfter>100;
+      if(penaltyAngle && farBand){
+        outcome = lateral>0 ? OUTCOMES.WATER : OUTCOMES.TREES;
+      } else {
+        // near green bands
+        if(distAfter<=60){
+          if(lateral>0.22) outcome = OUTCOMES.SAND;
+          else if(Math.abs(lateral)<=0.18) outcome = OUTCOMES.GREEN;
+          else outcome = (lateral<0)?OUTCOMES.ROUGH_L:OUTCOMES.ROUGH_R;
+        } else {
+          // fairway / rough split
+          if(Math.abs(lateral)<=0.18) outcome = OUTCOMES.FAIRWAY;
+          else outcome = (lateral<0)?OUTCOMES.ROUGH_L:OUTCOMES.ROUGH_R;
         }
       }
     }
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      --navy:#0B1F2A; --cream:#FDF5D9; --red:#D43D3D;
+  }
+
+  // penalties & reposition
+  if(outcome===OUTCOMES.WATER){
+    STATE.penalties++; STATE.vibeTags.add("Beach Bum");
+    showToast(choice(COMMENTARY.water));
+    // place at same distance (no progress), but next lie rough right
+    outcome = OUTCOMES.ROUGH_R;
+  }
+
+  // Set new state
+  if(outcome===OUTCOMES.CUP){
+    STATE.dist = 0;
+    STATE.onGreen = true;
+    concludeShot(outcome, distBefore, distAfter, club, a, p);
+    return;
+  }
+
+  if(outcome===OUTCOMES.GREEN){
+    // switch to feet on green
+    STATE.onGreen = true;
+    // convert remaining yards to feet approx
+    STATE.dist = Math.max(6, Math.round(distAfter*3));
+  } else if(club.kind==="putt"){
+    // still putting
+    STATE.onGreen = true;
+    STATE.dist = distAfter;
+  } else {
+    STATE.onGreen = false;
+    STATE.dist = Math.max(1, distAfter);
+  }
+
+  concludeShot(outcome, distBefore, STATE.dist, club, a, p);
+}
+
+function concludeShot(outcome, distBefore, distAfter, club, a, p){
+  setHUD();
+
+  // vibe tags
+  if(outcome===OUTCOMES.TREES) STATE.vibeTags.add("Lumberjack");
+  if(outcome===OUTCOMES.SAND) STATE.vibeTags.add("Beach Bum");
+  if(outcome===OUTCOMES.FAIRWAY) STATE.vibeTags.add("Sundowner");
+
+  // commentary
+  let line = "";
+  if(outcome===OUTCOMES.FAIRWAY) line = choice(COMMENTARY.fairway);
+  else if(outcome===OUTCOMES.ROUGH_L || outcome===OUTCOMES.ROUGH_R) line = choice(COMMENTARY.rough);
+  else if(outcome===OUTCOMES.TREES) line = choice(COMMENTARY.trees);
+  else if(outcome===OUTCOMES.SAND) line = choice(COMMENTARY.sand);
+  else if(outcome===OUTCOMES.GREEN) line = choice(COMMENTARY.green);
+  else if(outcome===OUTCOMES.CUP) line = choice(COMMENTARY.cup);
+
+  animateBall(outcome, ()=> {
+    showToast(line, 1500);
+    STATE.history.push({outcome, distBefore, distAfter, club:club.name});
+    if(outcome===OUTCOMES.CUP){
+      finishRound();
+    } else {
+      // ensure bound to max 4 putts when on green
+      if(STATE.onGreen && STATE.history.filter(h=>h.club==="Putter").length>=3){
+        // auto tap-in
+        STATE.shots++;
+        STATE.dist=0;
+        STATE.history.push({outcome:OUTCOMES.CUP, distBefore:distAfter, distAfter:0, club:"Putter"});
+        finishRound(true);
+      } else {
+        setTimeout(sceneClubSelect, 520);
+      }
     }
-    body { background: var(--navy); color: var(--cream); font-family: "Space Grotesk", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; }
-    .headline { font-family: "Libre Baskerville", serif; }
-    .card { background: rgba(253,245,217,0.06); border: 1px solid rgba(253,245,217,0.08); backdrop-filter: blur(2px) }
-    .btn { background: var(--cream); color: var(--navy); }
-    .btn-red { background: var(--red); color: white; }
-    .btn-outline { border:1px solid var(--cream); color: var(--cream); }
-    .pip { width: .55rem; height: .55rem; border-radius: 999px; background: var(--cream); }
-    .die { aspect-ratio: 1/1; background: rgba(253,245,217,0.12); border: 2px solid rgba(253,245,217,0.22); border-radius: 0.9rem; display:grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3,1fr); gap: .25rem; padding: .35rem; }
-    .die.held { border-color: var(--red); box-shadow: 0 0 0 2px rgba(212,61,61,0.5) inset; }
-    .die.empty { border-style: dashed; opacity: .6 }
-    .pip.hide { opacity: 0 }
-    .grid-center { display:flex; align-items:center; justify-content:center }
-    .suspense-bg { background: rgba(11,31,42,0.9); }
-    .bracket-item.out { opacity: .45; text-decoration: line-through; }
-    .badge { border:1px solid rgba(253,245,217,0.25); background: rgba(253,245,217,0.08); }
-  </style>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<body class="min-h-screen">
-  <div id="root" class="max-w-screen-md mx-auto p-4 sm:p-6"></div>
-
-  <script type="text/babel">
-
-const { useState, useMemo, useRef, useEffect } = React;
-
-// Utils
-const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-function scoreDice(values){
-  // In = at least one 1 and one 4
-  const has1 = values.includes(1);
-  const has4 = values.includes(4);
-  if(!has1 || !has4) return {in:false, score:0};
-  // Score = sum minus one 1 and one 4
-  const sum = values.reduce((a,b)=>a+b,0);
-  return {in:true, score: sum - 1 - 4};
+  });
 }
 
-function nextIndex(idx, order){
-  const at = order.indexOf(idx);
-  return order[(at+1) % order.length];
+/* ========= Simple Ball Animation (arc + land) ========= */
+function animateBall(outcome, done){
+  // create a little ball animation across the backdrop
+  const b = document.createElement("div");
+  b.className="ball";
+  scene.appendChild(b);
+  const start = {x: "12%", y: "72%"};
+  let end = {x: "60%", y:"40%"};
+  if(outcome===OUTCOMES.FAIRWAY) end={x:"60%",y:"58%"};
+  if(outcome===OUTCOMES.ROUGH_L) end={x:"24%",y:"58%"};
+  if(outcome===OUTCOMES.ROUGH_R) end={x:"78%",y:"60%"};
+  if(outcome===OUTCOMES.TREES) end={x:"14%",y:"50%"};
+  if(outcome===OUTCOMES.SAND) end={x:"66%",y:"46%"};
+  if(outcome===OUTCOMES.GREEN) end={x:"66%",y:"40%"};
+  if(outcome===OUTCOMES.CUP) end={x:"66%",y:"40%"};
+
+  gsap.set(b,{left:start.x, top:start.y});
+  const tl = gsap.timeline({onComplete:()=>{ b.remove(); done(); }});
+  tl.to(b,{duration:.5,yPercent:-120,ease:"power2.out"})
+    .to(b,{duration:.55,yPercent:0,ease:"bounce.out"})
+    .to(b,{left:end.x, top:end.y, duration:.75, ease:"power1.inOut"},0);
 }
 
-function sortOrderByRoundScores(players, roundScores){
-  const aliveIdxs = players
-    .map((p,i)=>({i,alive:!p.eliminated}))
-    .filter(x=>x.alive)
-    .map(x=>x.i);
-  // Highest scorer goes last next round. We want ascending turn order with last being highest.
-  const scored = aliveIdxs.map(i=>({i, score: roundScores[i] ?? 0}));
-  scored.sort((a,b)=>a.score - b.score);
-  return scored.map(x=>x.i);
-}
+/* ========= Finish & Score ========= */
+function finishRound(autoTap=false){
+  STATE.finished = true;
+  const strokes = STATE.shots + STATE.penalties;
+  const par = 4; // 409yd par 4
+  const diff = strokes - par;
+  const label = diff<=-2?"Eagle":diff===-1?"Birdie":diff===0?"Par":diff===1?"Bogey":"+ "+diff;
+  const vibe = [...STATE.vibeTags][0] || (diff<=0?"Sundowner":"The Walker");
 
-// Components
-function Header({children}) {
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <h1 className="headline text-2xl sm:text-3xl">In or Out</h1>
-      <div className="text-sm opacity-80">{children}</div>
-    </div>
-  );
-}
+  scene.innerHTML="";
+  drawBackdrop(scene);
 
-function Setup({ onStart }){
-  const [count, setCount] = useState(4);
-  const [names, setNames] = useState(["Player 1","Player 2","Player 3","Player 4"]);
-  const [diceCount, setDiceCount] = useState(6);
-
-  useEffect(()=>{
-    if(names.length < count){
-      setNames(prev => [...prev, ...Array.from({length: count - prev.length}, (_,k)=>`Player ${prev.length + k + 1}`)]);
-    } else if(names.length > count){
-      setNames(prev => prev.slice(0,count));
-    }
-  }, [count]);
-
-  return (
-    <div className="card rounded-2xl p-4 sm:p-6 shadow-soft animate-pop">
-      <Header>
-        <span className="badge rounded-full px-2 py-1 text-xs">Setup</span>
-      </Header>
-
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm mb-2">Players</label>
-          <div className="grid grid-cols-4 gap-2">
-            {[2,3,4,5,6].map(n=>(
-              <button key={n}
-                onClick={()=>setCount(n)}
-                className={`rounded-xl py-2 ${count===n?'btn':'btn-outline hover:bg-cream/10'} transition`}>
-                {n}
-              </button>
-            ))}
-          </div>
+  const code = genUnlockCode();
+  const wrap = document.createElement("div");
+  wrap.className="center";
+  wrap.innerHTML = `
+    <div class="card stack" style="padding:22px;max-width:880px">
+      <div class="row"><div class="badge">Final</div></div>
+      <h1>${strokes} • ${label}</h1>
+      <p class="small">You walked away with a ${strokes}. ${label==="Bogey"?"Bogey never looked so good.":"That'll play."}</p>
+      <div class="row">
+        <div class="pill">Vibe Title: <strong style="margin-left:6px">${vibe}</strong></div>
+        <div class="pill">Penalties: ${STATE.penalties}</div>
+      </div>
+      <hr class="hr" />
+      <div class="stack">
+        <div class="cta">
+          <button id="join">Join the pack</button>
+          <button id="store">Visit the store</button>
+          <button class="secondary" id="again">Restart</button>
         </div>
+        <div class="small">You unlocked the exclusive “Walk It In” tee · Use this code: <span class="code" id="unlock">${code}</span></div>
+      </div>
 
-        <div className="space-y-2">
-          {Array.from({length: count}).map((_,i)=>(
-            <input key={i}
-              className="w-full rounded-xl bg-transparent border border-cream/30 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red"
-              value={names[i] ?? ""}
-              onChange={e=>{
-                const arr=[...names]; arr[i]=e.target.value; setNames(arr);
-              }}
-              placeholder={`Player ${i+1} name`} />
-          ))}
+      <div class="stack" style="margin-top:16px">
+        <div class="row">
+          <input id="initials" placeholder="Enter 3-letter initials" maxlength="3" style="padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:var(--cream);outline:none">
+          <button id="saveScore">Save to Leaderboard</button>
         </div>
-
-        <div>
-          <label className="block text-sm mb-2">Dice Count</label>
-          <div className="grid grid-cols-3 gap-2">
-            {[5,6,7].map(n=>(
-              <button key={n}
-                onClick={()=>setDiceCount(n)}
-                className={`rounded-xl py-2 ${diceCount===n?'btn':'btn-outline hover:bg-cream/10'} transition`}>
-                {n} dice
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={()=>onStart(names.slice(0,count), diceCount)}
-          className="w-full btn rounded-2xl py-3 text-lg font-semibold mt-2">
-          Start Tournament
-        </button>
+        <div id="saveMsg" class="small"></div>
       </div>
     </div>
-  );
-}
+  `;
+  scene.appendChild(wrap);
+  gsap.from(wrap,{y:16,opacity:0,duration:.6,ease:"power2.out"});
 
-function Dice({ value, held, empty, onToggle, rolling }){
-  const pipMap = {
-    1: [5],
-    2: [1,9],
-    3: [1,5,9],
-    4: [1,3,7,9],
-    5: [1,3,5,7,9],
-    6: [1,3,4,6,7,9],
+  $("#join").onclick=()=>window.location.href="https://bogeyhound.com";
+  $("#store").onclick=()=>window.location.href="https://bogeyhound.com";
+  $("#again").onclick=sceneTitle;
+
+  $("#saveScore").onclick=()=>{
+    const init = ($("#initials").value||"???").toUpperCase().replace(/[^A-Z]/g,"").slice(0,3).padEnd(3,"_");
+    if(PROFANITY.includes(init)){ $("#saveMsg").textContent="Try different initials."; return; }
+    saveScore(init, strokes);
+    $("#saveMsg").textContent="Saved. Check Leaderboard.";
   };
-  return (
-    <div onClick={onToggle}
-      className={`die ${held?'held':''} ${empty?'empty':''} ${rolling?'animate-jitter':''} cursor-pointer select-none`}>
-      {Array.from({length:9}).map((_,i)=>{
-        const show = value && pipMap[value]?.includes(i+1);
-        return <div key={i} className="grid-center">{show ? <div className="pip"></div> : <div className="pip hide"></div>}</div>
-      })}
-    </div>
-  );
 }
 
-function PlayerBadge({name, active, out, score, inFlag, lastRoundTop}){
-  return (
-    <div className={`rounded-xl px-3 py-2 flex items-center gap-2 ${active?'bg-cream text-navy':'badge text-cream'}`}>
-      <div className={`w-2 h-2 rounded-full ${out?'bg-red': active?'bg-navy':'bg-cream/70'}`}></div>
-      <div className="font-medium">{name}</div>
-      {typeof score === 'number' && !out && (
-        <div className={`ml-auto text-xs ${active?'text-navy/70':'text-cream/70'}`}>
-          {inFlag ? 'IN' : 'OUT'} · {score}
-        </div>
-      )}
-      {lastRoundTop ? <span className={`text-[10px] ml-2 ${active?'text-navy/60':'text-cream/60'}`}>last to roll</span> : null}
-    </div>
-  );
+/* ========= Leaderboard (localStorage) ========= */
+const LB_KEY="bh_walkin_lb_v1";
+function loadLB(){ try{ return JSON.parse(localStorage.getItem(LB_KEY)||"[]"); }catch(e){ return [] } }
+function saveScore(initials, score){
+  const lb = loadLB();
+  lb.push({i:initials, s:score, t:Date.now()});
+  lb.sort((a,b)=>a.s-b.s || a.t-b.t);
+  localStorage.setItem(LB_KEY, JSON.stringify(lb.slice(0,10)));
+}
+function sceneLeaderboard(){
+  scene.innerHTML="";
+  drawBackdrop(scene);
+  const lb = loadLB();
+  const rows = lb.map((r,idx)=>`<tr><td>${idx+1}</td><td>${r.i}</td><td>${r.s}</td><td>${new Date(r.t).toLocaleDateString()}</td></tr>`).join("") || `<tr><td colspan="4" class="small">No scores yet. Go set one.</td></tr>`;
+  const wrap=document.createElement("div");
+  wrap.className="center";
+  wrap.innerHTML=`
+    <div class="card stack" style="padding:22px;max-width:760px">
+      <div class="row"><div class="badge">Top 10</div></div>
+      <h2>Leaderboard</h2>
+      <table class="leader">
+        <thead><tr><th>#</th><th>Initials</th><th>Score</th><th>Date</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="row"><button id="back" class="secondary">Back</button></div>
+    </div>`;
+  scene.appendChild(wrap);
+  $("#back").onclick=sceneTitle;
 }
 
-function Bracket({ players }){
-  return (
-    <div className="card rounded-2xl p-4 shadow-soft">
-      <div className="font-semibold mb-2">Bracket</div>
-      <div className="space-y-2">
-        {players.map((p,i)=>(
-          <div key={i} className={`bracket-item ${p.eliminated?'out':''} flex items-center justify-between`}>
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${p.eliminated?'bg-red':'bg-cream/70'}`}></div>
-              <span>{p.name}</span>
-            </div>
-            {p.eliminated && <span className="text-xs opacity-70">Out</span>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+/* ========= Unlock Code ========= */
+function genUnlockCode(){
+  const alph="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let c="BH-";
+  for(let i=0;i<6;i++) c+=alph[Math.floor(Math.random()*alph.length)];
+  return c;
 }
 
-function SuspenseOverlay({ text }){
-  return (
-    <div className="fixed inset-0 z-40 suspense-bg grid place-items-center">
-      <div className="text-center">
-        <div className="headline text-3xl mb-2">Revealing…</div>
-        <div className="opacity-80">{text}</div>
-      </div>
-    </div>
-  );
-}
-
-function Victory({ winner, onReset }){
-  // simple confetti
-  const pieces = Array.from({length: 80});
-  return (
-    <div className="fixed inset-0 z-40 grid place-items-center">
-      <div className="absolute inset-0 pointer-events-none">
-        {pieces.map((_,i)=>(
-          <div key={i}
-               className="absolute w-2 h-3 rounded-sm"
-               style={{
-                 left: `${randInt(0,100)}%`,
-                 top: `-10vh`,
-                 background: i%3===0?'#FDF5D9':(i%3===1?'#D43D3D':'#ffffff'),
-                 animation: `confetti ${1.8 + Math.random()*1.2}s linear ${Math.random()*0.6}s forwards`,
-                 transform: `translateY(-20vh) rotate(${randInt(0,360)}deg)`
-               }} />
-        ))}
-      </div>
-      <div className="card rounded-3xl p-6 shadow-soft text-center animate-pop">
-        <div className="headline text-3xl mb-2">Champion</div>
-        <div className="text-lg opacity-90 mb-4">{winner.name}</div>
-        <button className="btn-red rounded-2xl px-5 py-3 font-semibold" onClick={onReset}>Play Again</button>
-      </div>
-    </div>
-  );
-}
-
-function Game(){
-  const [players, setPlayers] = useState([]);
-  const [order, setOrder] = useState([]);
-  const [diceCount, setDiceCount] = useState(6);
-  const [phase, setPhase] = useState("setup"); // setup | round | suspense | victory | tiebreak
-  const [current, setCurrent] = useState(0);
-  const [round, setRound] = useState(1);
-  const [lastRoundScores, setLastRoundScores] = useState({});
-  const [rolling, setRolling] = useState(false);
-
-  // per turn dice state
-  const [dice, setDice] = useState([]); // values or null
-  const [held, setHeld] = useState([]); // bools
-  const [firstRoll, setFirstRoll] = useState(true);
-  const [turnDone, setTurnDone] = useState(false);
-  const [inFlag, setInFlag] = useState(false);
-  const [turnScore, setTurnScore] = useState(0);
-
-  // tiebreaker
-  const [tieGroup, setTieGroup] = useState([]); // indices
-  const [tieScores, setTieScores] = useState({}); // idx -> score
-
-  function start(names, dCount){
-    const initPlayers = names.map(n=>({ name:n.trim()||"Player", eliminated:false }));
-    setPlayers(initPlayers);
-    const idxs = initPlayers.map((_,i)=>i);
-    setOrder(idxs);
-    setDiceCount(dCount);
-    setPhase("round");
-    setRound(1);
-    resetTurnFor(order[0] ?? 0, dCount);
-  }
-
-  function resetTurnFor(playerIndex, dCount = diceCount){
-    setCurrent(playerIndex);
-    setDice(Array.from({length: dCount}).map(()=>null));
-    setHeld(Array.from({length: dCount}).fill(false));
-    setFirstRoll(true);
-    setTurnDone(false);
-    setInFlag(false);
-    setTurnScore(0);
-    setRolling(false);
-  }
-
-  function roll(){
-    // must keep at least one die each roll unless firstRoll
-    if(!firstRoll && held.filter(h=>h).length===0){
-      alert("Keep at least one die before rolling.");
-      return;
-    }
-    setRolling(true);
-    // jitter then resolve
-    setTimeout(()=>{
-      setDice(prev => prev.map((v,i)=> held[i] ? v : randInt(1,6)));
-      setFirstRoll(false);
-      setRolling(false);
-    }, 700);
-  }
-
-  useEffect(()=>{
-    if(dice.length===0) return;
-    if(dice.some(v=>v===null)) return;
-    const keptAll = held.every(h=>h);
-    const {in: ok, score} = scoreDice(dice);
-    setInFlag(ok);
-    setTurnScore(score);
-    if(keptAll){
-      setTurnDone(true);
-    }
-  }, [dice, held]);
-
-  function toggleHold(i){
-    if(firstRoll && dice[i]===null) return; // nothing to hold yet
-    setHeld(prev=>{
-      const copy=[...prev]; copy[i]=!copy[i]; return copy;
-    });
-  }
-
-  function keepAll(){
-    setHeld(Array.from({length:dice.length}).fill(true));
-  }
-
-  function endTurn(){
-    // mark score
-    const pid = current;
-    const newRoundScores = { ...lastRoundScores, [pid]: turnScore };
-    setLastRoundScores(newRoundScores);
-
-    // next player or end round
-    const nextIdx = nextIndex(pid, order);
-    const isLastOfRound = nextIdx === order[0];
-
-    if(isLastOfRound){
-      // round end: evaluate elimination or tie-break
-      const alive = players.map((p,i)=>({i, alive:!p.eliminated}));
-      const aliveIdx = alive.filter(x=>x.alive).map(x=>x.i);
-      const scores = aliveIdx.map(i=>({i, s:newRoundScores[i] ?? 0}));
-      const minScore = Math.min(...scores.map(x=>x.s));
-      const maxScore = Math.max(...scores.map(x=>x.s));
-      const lowest = scores.filter(x=>x.s===minScore).map(x=>x.i);
-
-      // set next round order based on scores
-      const newOrder = sortOrderByRoundScores(players, newRoundScores);
-      setOrder(newOrder);
-
-      if(lowest.length>1){
-        // tie-breaker
-        setTieGroup(lowest);
-        setTieScores({});
-        setPhase("tiebreak");
-        resetTurnFor(lowest[0]);
-      } else {
-        // eliminate one with suspense
-        const outIdx = lowest[0];
-        setPhase("suspense");
-        setTimeout(()=>{
-          setPlayers(prev=>{
-            const copy=[...prev];
-            copy[outIdx] = { ...copy[outIdx], eliminated:true };
-            return copy;
-          });
-          const aliveCount = players.filter(p=>!p.eliminated).length - 1; // minus eliminated
-          if(aliveCount<=1){
-            setPhase("victory");
-          } else {
-            // next round
-            setRound(r=>r+1);
-            setLastRoundScores({});
-            setPhase("round");
-            // highest scorer rolls last next round already handled by newOrder
-            resetTurnFor(newOrder[0]);
-          }
-        }, 1200);
-      }
-    } else {
-      // next player's turn
-      resetTurnFor(nextIdx);
-    }
-  }
-
-  // tiebreak flow
-  function endTieTurn(){
-    const pid = current;
-    const newTS = { ...tieScores, [pid]: turnScore };
-    setTieScores(newTS);
-
-    const idxInTie = tieGroup.indexOf(pid);
-    const hasNext = idxInTie < tieGroup.length - 1;
-
-    if(hasNext){
-      resetTurnFor(tieGroup[idxInTie+1]);
-    } else {
-      // compare results
-      const items = tieGroup.map(i=>({i, s:newTS[i] ?? 0}));
-      const minS = Math.min(...items.map(x=>x.s));
-      const cand = items.filter(x=>x.s===minS).map(x=>x.i);
-      if(cand.length===1){
-        // eliminate cand[0]
-        setPhase("suspense");
-        setTimeout(()=>{
-          setPlayers(prev=>{
-            const copy=[...prev];
-            copy[cand[0]] = { ...copy[cand[0]], eliminated:true };
-            return copy;
-          });
-          // next round
-          setRound(r=>r+1);
-          setLastRoundScores({});
-          setPhase("round");
-          // order remains from previous round
-          const aliveOrder = order.filter(i=>!players[i].eliminated && i!==cand[0]);
-          const startIdx = aliveOrder[0] ?? 0;
-          resetTurnFor(startIdx);
-        }, 1000);
-      } else {
-        // tie persists. repeat among cand
-        setTieGroup(cand);
-        setTieScores({});
-        resetTurnFor(cand[0]);
-      }
-    }
-  }
-
-  function onReset(){
-    setPlayers([]);
-    setOrder([]);
-    setDiceCount(6);
-    setPhase("setup");
-    setCurrent(0);
-    setRound(1);
-    setLastRoundScores({});
-    setTieGroup([]);
-    setTieScores({});
-    setDice([]);
-    setHeld([]);
-    setFirstRoll(true);
-    setTurnDone(false);
-  }
-
-  // derived
-  const alivePlayers = players.filter(p=>!p.eliminated);
-  const currentPlayer = players[current];
-
-  if(phase==="setup"){
-    return <Setup onStart={start} />
-  }
-
-  const topOfOrder = order[order.length-1];
-
-  return (
-    <div className="space-y-4">
-      <Header>
-        <div className="flex items-center gap-2">
-          <span className="badge rounded-full px-2 py-1 text-xs">Round {round}</span>
-          <span className="text-xs opacity-70">{alivePlayers.length} in play</span>
-        </div>
-      </Header>
-
-      <div className="grid gap-4">
-        <div className="card rounded-2xl p-4 shadow-soft">
-          <div className="flex items-center justify-between mb-3">
-            <div className="font-semibold">Current Turn</div>
-            <div className="text-sm opacity-80">{phase==="tiebreak" ? "Tie-breaker" : "Standard round"}</div>
-          </div>
-
-          <PlayerBadge
-            name={currentPlayer?.name ?? "Player"}
-            active={true}
-            out={false}
-            score={turnScore}
-            inFlag={inFlag}
-            lastRoundTop={topOfOrder===current}
-          />
-
-          <div className="mt-4 grid grid-cols-5 sm:grid-cols-6 gap-2">
-            {dice.map((v,i)=>(
-              <Dice key={i}
-                value={v}
-                held={held[i]}
-                empty={v===null}
-                rolling={rolling}
-                onToggle={()=>toggleHold(i)}
-              />
-            ))}
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button onClick={roll} disabled={rolling || turnDone}
-              className={`rounded-2xl py-3 font-semibold ${turnDone?'btn-outline opacity-60':'btn'} disabled:opacity-60`}>
-              {firstRoll ? "Roll" : "Re-roll"}
-            </button>
-            <button onClick={keepAll} disabled={turnDone || firstRoll}
-              className="btn-outline rounded-2xl py-3 font-semibold disabled:opacity-60">
-              Keep All
-            </button>
-          </div>
-
-          <div className="mt-3 text-sm opacity-90">
-            <div>Need at least one <span className="font-semibold">1</span> and one <span className="font-semibold">4</span> to score.</div>
-            <div className="mt-1">Score: {inFlag ? turnScore : 0}</div>
-          </div>
-
-          <div className="mt-4">
-            <button
-              onClick={()=> phase==="tiebreak" ? endTieTurn() : endTurn()}
-              disabled={!turnDone}
-              className="btn-red rounded-2xl py-3 px-5 font-semibold w-full disabled:opacity-60">
-              End Turn
-            </button>
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="card rounded-2xl p-4 shadow-soft">
-            <div className="font-semibold mb-2">Turn Order</div>
-            <div className="space-y-2">
-              {order.filter(i=>!players[i].eliminated).map(i=>(
-                <PlayerBadge
-                  key={i}
-                  name={players[i].name}
-                  active={i===current}
-                  out={false}
-                  score={lastRoundScores[i]}
-                  inFlag={(lastRoundScores[i] ?? 0) > 0}
-                  lastRoundTop={topOfOrder===i}
-                />
-              ))}
-            </div>
-          </div>
-
-          <Bracket players={players} />
-        </div>
-      </div>
-
-      {phase==="suspense" && <SuspenseOverlay text="Lowest score will be eliminated." />}
-
-      {phase==="victory" && (
-        <Victory
-          winner={players.find(p=>!p.eliminated) ?? {name:"Winner"}}
-          onReset={onReset}
-        />
-      )}
-    </div>
-  );
-}
-
-function App(){
-  return (
-    <div>
-      <Game/>
-      <footer className="mt-6 text-center text-xs opacity-60">Theme: navy · cream · red</footer>
-    </div>
-  );
-}
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App/>);
-
-  </script>
+/* ========= Boot ========= */
+sceneTitle();
+</script>
 </body>
 </html>
+
