@@ -3,513 +3,597 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>One-Four Dice Tournament</title>
+  <title>In or Out</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: "#0B1F2A",
+            cream: "#FDF5D9",
+            red: "#D43D3D",
+          },
+          boxShadow: {
+            soft: "0 6px 24px rgba(0,0,0,0.18)",
+          },
+          keyframes: {
+            jitter: {
+              '0%,100%': { transform: 'translate(0,0) rotate(0deg)' },
+              '25%': { transform: 'translate(-2px,1px) rotate(-4deg)' },
+              '50%': { transform: 'translate(2px,-1px) rotate(4deg)' },
+              '75%': { transform: 'translate(-1px,2px) rotate(-2deg)' },
+            },
+            pop: {
+              '0%': { transform: 'scale(0.8)', opacity: 0 },
+              '60%': { transform: 'scale(1.05)', opacity: 1 },
+              '100%': { transform: 'scale(1)' },
+            },
+            confetti: {
+              '0%': { transform: 'translateY(-20vh) rotate(0deg)' , opacity: 1 },
+              '100%': { transform: 'translateY(120vh) rotate(540deg)', opacity: 1 },
+            },
+          },
+          animation: {
+            jitter: 'jitter 0.7s ease-in-out',
+            pop: 'pop 320ms ease-out',
+            confetti: 'confetti 2.4s linear forwards',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --navy:#0B1F2A; --cream:#FDF5D9; --red:#D43D3D;
+    }
+    body { background: var(--navy); color: var(--cream); font-family: "Space Grotesk", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; }
+    .headline { font-family: "Libre Baskerville", serif; }
+    .card { background: rgba(253,245,217,0.06); border: 1px solid rgba(253,245,217,0.08); backdrop-filter: blur(2px) }
+    .btn { background: var(--cream); color: var(--navy); }
+    .btn-red { background: var(--red); color: white; }
+    .btn-outline { border:1px solid var(--cream); color: var(--cream); }
+    .pip { width: .55rem; height: .55rem; border-radius: 999px; background: var(--cream); }
+    .die { aspect-ratio: 1/1; background: rgba(253,245,217,0.12); border: 2px solid rgba(253,245,217,0.22); border-radius: 0.9rem; display:grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3,1fr); gap: .25rem; padding: .35rem; }
+    .die.held { border-color: var(--red); box-shadow: 0 0 0 2px rgba(212,61,61,0.5) inset; }
+    .die.empty { border-style: dashed; opacity: .6 }
+    .pip.hide { opacity: 0 }
+    .grid-center { display:flex; align-items:center; justify-content:center }
+    .suspense-bg { background: rgba(11,31,42,0.9); }
+    .bracket-item.out { opacity: .45; text-decoration: line-through; }
+    .badge { border:1px solid rgba(253,245,217,0.25); background: rgba(253,245,217,0.08); }
+  </style>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>
-    :root{
-      --navy:#0B1F2A;
-      --cream:#FDF5D9;
-      --red:#D43D3D;
-    }
-    body { background: radial-gradient(1200px 800px at 50% -10%, #103047, var(--navy) 60%); }
-    .die { position: relative; }
-    .pip { width:10px; height:10px; border-radius:50%; background: currentColor; position:absolute; opacity:.95; }
-
-    /* Animations */
-    @keyframes wiggle { 0%{transform:rotate(0deg)} 25%{transform:rotate(-6deg)} 50%{transform:rotate(6deg)} 75%{transform:rotate(-3deg)} 100%{transform:rotate(0deg)} }
-    @keyframes pop { from{transform:scale(.9); opacity:.5} to{transform:scale(1); opacity:1} }
-    .rolling { animation: wiggle .4s ease-in-out infinite; }
-    .pop { animation: pop .18s ease-out; }
-
-    /* Confetti */
-    .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
-    .confetti i { position:absolute; width:10px; height:16px; background: var(--cream); opacity:.9; transform: rotate(0deg);}
-    @keyframes fall { to { transform: translateY(110vh) rotate(360deg); opacity: .9; } }
-  </style>
 </head>
-<body class="text-[var(--cream)] antialiased">
-  <div id="root"></div>
+<body class="min-h-screen">
+  <div id="root" class="max-w-screen-md mx-auto p-4 sm:p-6"></div>
 
   <script type="text/babel">
-    const { useMemo, useState, useEffect, useRef } = React;
 
-    // helpers
-    const rollMany = (n) => Array.from({ length: n }, () => 1 + Math.floor(Math.random()*6));
-    const sum = (a) => a.reduce((x,y)=>x+y,0);
-    const needIn = (a) => a.includes(1) && a.includes(4);
+const { useState, useMemo, useRef, useEffect } = React;
 
-    function App(){
-      const [phase, setPhase] = useState('setup');
-      const [diceCount, setDiceCount] = useState(5); // 5, 6, 7
-      const [names, setNames] = useState(['','']);
+// Utils
+const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-      // tournament state
-      const [active, setActive] = useState([]); // order matters
-      const [roundNum, setRoundNum] = useState(1);
-      const [currentIndex, setCurrentIndex] = useState(0);
-      const [scores, setScores] = useState({});
-      const [tieGroup, setTieGroup] = useState(null);
-      const [history, setHistory] = useState([]);
-      const [revealing, setRevealing] = useState(false);
+function scoreDice(values){
+  // In = at least one 1 and one 4
+  const has1 = values.includes(1);
+  const has4 = values.includes(4);
+  if(!has1 || !has4) return {in:false, score:0};
+  // Score = sum minus one 1 and one 4
+  const sum = values.reduce((a,b)=>a+b,0);
+  return {in:true, score: sum - 1 - 4};
+}
 
-      // turn state
-      const [turnName, setTurnName] = useState('');
-      const [dice, setDice] = useState([]);
-      const [kept, setKept] = useState([]);
-      const [selectKeep, setSelectKeep] = useState([]);
-      const [roundOver, setRoundOver] = useState(false);
-      const [message, setMessage] = useState('');
-      const [score, setScore] = useState(0);
-      const [rolling, setRolling] = useState(false);
-      const [showConfetti, setShowConfetti] = useState(false);
-      const [hasRolled, setHasRolled] = useState(false); // NEW
+function nextIndex(idx, order){
+  const at = order.indexOf(idx);
+  return order[(at+1) % order.length];
+}
 
-      // setup
-      const addPlayer = () => setNames(n => [...n, '']);
-      const removePlayer = (i) => setNames(n => n.length>2 ? n.filter((_,idx)=>idx!==i) : n);
+function sortOrderByRoundScores(players, roundScores){
+  const aliveIdxs = players
+    .map((p,i)=>({i,alive:!p.eliminated}))
+    .filter(x=>x.alive)
+    .map(x=>x.i);
+  // Highest scorer goes last next round. We want ascending turn order with last being highest.
+  const scored = aliveIdxs.map(i=>({i, score: roundScores[i] ?? 0}));
+  scored.sort((a,b)=>a.score - b.score);
+  return scored.map(x=>x.i);
+}
 
-      const startTournament = () => {
-        const players = names.map(s=>s.trim()).filter(Boolean);
-        if (players.length < 2) return alert('Need at least 2 players.');
-        setActive(players);
-        setRoundNum(1);
-        setCurrentIndex(0);
-        setScores({});
-        setTieGroup(null);
-        setHistory([]);
-        setPhase('play');
-      };
+// Components
+function Header({children}) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <h1 className="headline text-2xl sm:text-3xl">In or Out</h1>
+      <div className="text-sm opacity-80">{children}</div>
+    </div>
+  );
+}
 
-      // begin turn
-      useEffect(()=>{
-        if (phase !== 'play') return;
-        const roster = tieGroup ? tieGroup : active;
-        if (!roster.length) return;
-        if (currentIndex >= roster.length) return;
-        beginTurn(roster[currentIndex]);
-      }, [phase, currentIndex, tieGroup]);
+function Setup({ onStart }){
+  const [count, setCount] = useState(4);
+  const [names, setNames] = useState(["Player 1","Player 2","Player 3","Player 4"]);
+  const [diceCount, setDiceCount] = useState(6);
 
-      function beginTurn(name){
-        setTurnName(name);
-        // show blank dice until first Roll
-        setDice(Array(diceCount).fill(0));           // NEW: placeholders
-        setKept(Array(diceCount).fill(false));
-        setSelectKeep(Array(diceCount).fill(false));
-        setRoundOver(false);
-        setScore(0);
-        setHasRolled(false);                         // NEW
-        setMessage('Tap Roll to start.');            // NEW
-      }
+  useEffect(()=>{
+    if(names.length < count){
+      setNames(prev => [...prev, ...Array.from({length: count - prev.length}, (_,k)=>`Player ${prev.length + k + 1}`)]);
+    } else if(names.length > count){
+      setNames(prev => prev.slice(0,count));
+    }
+  }, [count]);
 
-      // first full roll (no keeps)
-      function firstRoll(){
-        if (rolling || roundOver || hasRolled) return;
-        setRolling(true);
-        const start = performance.now();
-        const jitter = () => {
-          const t = performance.now() - start;
-          // jitter all dice visually
-          setDice(Array(diceCount).fill(0).map(()=> 1 + Math.floor(Math.random()*6)));
-          if (t < 700) requestAnimationFrame(jitter);
-          else {
-            setDice(rollMany(diceCount));
-            setRolling(false);
-            setHasRolled(true);
-            setMessage('Select at least 1 die to keep, then Keep & Roll.');
-          }
-        };
-        requestAnimationFrame(jitter);
-      }
+  return (
+    <div className="card rounded-2xl p-4 sm:p-6 shadow-soft animate-pop">
+      <Header>
+        <span className="badge rounded-full px-2 py-1 text-xs">Setup</span>
+      </Header>
 
-      // roll/keep logic
-      const keptCount = useMemo(()=> kept.filter(Boolean).length, [kept]);
+      <div className="space-y-6">
+        <div>
+          <label className="block text-sm mb-2">Players</label>
+          <div className="grid grid-cols-4 gap-2">
+            {[2,3,4,5,6].map(n=>(
+              <button key={n}
+                onClick={()=>setCount(n)}
+                className={`rounded-xl py-2 ${count===n?'btn':'btn-outline hover:bg-cream/10'} transition`}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      const onToggle = (i) => {
-        if (!hasRolled) return;        // NEW: block until first roll
-        if (roundOver || kept[i]) return;
-        const next = [...selectKeep];
-        next[i] = !next[i];
-        setSelectKeep(next);
-      };
+        <div className="space-y-2">
+          {Array.from({length: count}).map((_,i)=>(
+            <input key={i}
+              className="w-full rounded-xl bg-transparent border border-cream/30 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red"
+              value={names[i] ?? ""}
+              onChange={e=>{
+                const arr=[...names]; arr[i]=e.target.value; setNames(arr);
+              }}
+              placeholder={`Player ${i+1} name`} />
+          ))}
+        </div>
 
-      function animateRollApply(newKept){
-        const remaining = newKept.reduce((a,k)=>a+(k?0:1),0);
-        if (remaining === 0){
-          const finalScore = needIn(dice) ? sum(dice) : 0;
-          setRoundOver(true);
-          setScore(finalScore);
-          setMessage(finalScore>0 ? 'Round over. You are in.' : 'Round over. No 1+4. Score 0.');
-          return;
-        }
-        setRolling(true);
-        const start = performance.now();
-        const jitter = () => {
-          const t = performance.now() - start;
-          const temp = [...dice];
-          for(let i=0;i<dice.length;i++) if(!newKept[i]) temp[i] = 1 + Math.floor(Math.random()*6);
-          setDice(temp);
-          if (t < 700){ requestAnimationFrame(jitter); }
-          else {
-            const rolled = rollMany(remaining);
-            const nextDice=[]; let r=0;
-            for (let i=0;i<dice.length;i++) nextDice[i] = newKept[i] ? dice[i] : rolled[r++];
-            setDice(nextDice);
-            setKept(newKept);
-            setSelectKeep(Array(dice.length).fill(false));
-            setRolling(false);
-            setMessage('Nice. Pick at least one more to keep.');
-          }
-        };
-        requestAnimationFrame(jitter);
-      }
+        <div>
+          <label className="block text-sm mb-2">Dice Count</label>
+          <div className="grid grid-cols-3 gap-2">
+            {[5,6,7].map(n=>(
+              <button key={n}
+                onClick={()=>setDiceCount(n)}
+                className={`rounded-xl py-2 ${diceCount===n?'btn':'btn-outline hover:bg-cream/10'} transition`}>
+                {n} dice
+              </button>
+            ))}
+          </div>
+        </div>
 
-      const keepAndRoll = () => {
-        if (!hasRolled) return; // NEW
-        if (roundOver) return;
-        const toKeep = selectKeep.filter(Boolean).length;
-        if (keptCount < dice.length && toKeep === 0){
-          setMessage('You must keep at least 1 die before rolling.');
-          return;
-        }
-        const newKept = kept.map((k,i)=> k || selectKeep[i]);
-        animateRollApply(newKept);
-      };
+        <button
+          onClick={()=>onStart(names.slice(0,count), diceCount)}
+          className="w-full btn rounded-2xl py-3 text-lg font-semibold mt-2">
+          Start Tournament
+        </button>
+      </div>
+    </div>
+  );
+}
 
-      const endNow = () => {
-        if (!hasRolled) return; // NEW
-        if (roundOver) return;
-        setRolling(true);
+function Dice({ value, held, empty, onToggle, rolling }){
+  const pipMap = {
+    1: [5],
+    2: [1,9],
+    3: [1,5,9],
+    4: [1,3,7,9],
+    5: [1,3,5,7,9],
+    6: [1,3,4,6,7,9],
+  };
+  return (
+    <div onClick={onToggle}
+      className={`die ${held?'held':''} ${empty?'empty':''} ${rolling?'animate-jitter':''} cursor-pointer select-none`}>
+      {Array.from({length:9}).map((_,i)=>{
+        const show = value && pipMap[value]?.includes(i+1);
+        return <div key={i} className="grid-center">{show ? <div className="pip"></div> : <div className="pip hide"></div>}</div>
+      })}
+    </div>
+  );
+}
+
+function PlayerBadge({name, active, out, score, inFlag, lastRoundTop}){
+  return (
+    <div className={`rounded-xl px-3 py-2 flex items-center gap-2 ${active?'bg-cream text-navy':'badge text-cream'}`}>
+      <div className={`w-2 h-2 rounded-full ${out?'bg-red': active?'bg-navy':'bg-cream/70'}`}></div>
+      <div className="font-medium">{name}</div>
+      {typeof score === 'number' && !out && (
+        <div className={`ml-auto text-xs ${active?'text-navy/70':'text-cream/70'}`}>
+          {inFlag ? 'IN' : 'OUT'} · {score}
+        </div>
+      )}
+      {lastRoundTop ? <span className={`text-[10px] ml-2 ${active?'text-navy/60':'text-cream/60'}`}>last to roll</span> : null}
+    </div>
+  );
+}
+
+function Bracket({ players }){
+  return (
+    <div className="card rounded-2xl p-4 shadow-soft">
+      <div className="font-semibold mb-2">Bracket</div>
+      <div className="space-y-2">
+        {players.map((p,i)=>(
+          <div key={i} className={`bracket-item ${p.eliminated?'out':''} flex items-center justify-between`}>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${p.eliminated?'bg-red':'bg-cream/70'}`}></div>
+              <span>{p.name}</span>
+            </div>
+            {p.eliminated && <span className="text-xs opacity-70">Out</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SuspenseOverlay({ text }){
+  return (
+    <div className="fixed inset-0 z-40 suspense-bg grid place-items-center">
+      <div className="text-center">
+        <div className="headline text-3xl mb-2">Revealing…</div>
+        <div className="opacity-80">{text}</div>
+      </div>
+    </div>
+  );
+}
+
+function Victory({ winner, onReset }){
+  // simple confetti
+  const pieces = Array.from({length: 80});
+  return (
+    <div className="fixed inset-0 z-40 grid place-items-center">
+      <div className="absolute inset-0 pointer-events-none">
+        {pieces.map((_,i)=>(
+          <div key={i}
+               className="absolute w-2 h-3 rounded-sm"
+               style={{
+                 left: `${randInt(0,100)}%`,
+                 top: `-10vh`,
+                 background: i%3===0?'#FDF5D9':(i%3===1?'#D43D3D':'#ffffff'),
+                 animation: `confetti ${1.8 + Math.random()*1.2}s linear ${Math.random()*0.6}s forwards`,
+                 transform: `translateY(-20vh) rotate(${randInt(0,360)}deg)`
+               }} />
+        ))}
+      </div>
+      <div className="card rounded-3xl p-6 shadow-soft text-center animate-pop">
+        <div className="headline text-3xl mb-2">Champion</div>
+        <div className="text-lg opacity-90 mb-4">{winner.name}</div>
+        <button className="btn-red rounded-2xl px-5 py-3 font-semibold" onClick={onReset}>Play Again</button>
+      </div>
+    </div>
+  );
+}
+
+function Game(){
+  const [players, setPlayers] = useState([]);
+  const [order, setOrder] = useState([]);
+  const [diceCount, setDiceCount] = useState(6);
+  const [phase, setPhase] = useState("setup"); // setup | round | suspense | victory | tiebreak
+  const [current, setCurrent] = useState(0);
+  const [round, setRound] = useState(1);
+  const [lastRoundScores, setLastRoundScores] = useState({});
+  const [rolling, setRolling] = useState(false);
+
+  // per turn dice state
+  const [dice, setDice] = useState([]); // values or null
+  const [held, setHeld] = useState([]); // bools
+  const [firstRoll, setFirstRoll] = useState(true);
+  const [turnDone, setTurnDone] = useState(false);
+  const [inFlag, setInFlag] = useState(false);
+  const [turnScore, setTurnScore] = useState(0);
+
+  // tiebreaker
+  const [tieGroup, setTieGroup] = useState([]); // indices
+  const [tieScores, setTieScores] = useState({}); // idx -> score
+
+  function start(names, dCount){
+    const initPlayers = names.map(n=>({ name:n.trim()||"Player", eliminated:false }));
+    setPlayers(initPlayers);
+    const idxs = initPlayers.map((_,i)=>i);
+    setOrder(idxs);
+    setDiceCount(dCount);
+    setPhase("round");
+    setRound(1);
+    resetTurnFor(order[0] ?? 0, dCount);
+  }
+
+  function resetTurnFor(playerIndex, dCount = diceCount){
+    setCurrent(playerIndex);
+    setDice(Array.from({length: dCount}).map(()=>null));
+    setHeld(Array.from({length: dCount}).fill(false));
+    setFirstRoll(true);
+    setTurnDone(false);
+    setInFlag(false);
+    setTurnScore(0);
+    setRolling(false);
+  }
+
+  function roll(){
+    // must keep at least one die each roll unless firstRoll
+    if(!firstRoll && held.filter(h=>h).length===0){
+      alert("Keep at least one die before rolling.");
+      return;
+    }
+    setRolling(true);
+    // jitter then resolve
+    setTimeout(()=>{
+      setDice(prev => prev.map((v,i)=> held[i] ? v : randInt(1,6)));
+      setFirstRoll(false);
+      setRolling(false);
+    }, 700);
+  }
+
+  useEffect(()=>{
+    if(dice.length===0) return;
+    if(dice.some(v=>v===null)) return;
+    const keptAll = held.every(h=>h);
+    const {in: ok, score} = scoreDice(dice);
+    setInFlag(ok);
+    setTurnScore(score);
+    if(keptAll){
+      setTurnDone(true);
+    }
+  }, [dice, held]);
+
+  function toggleHold(i){
+    if(firstRoll && dice[i]===null) return; // nothing to hold yet
+    setHeld(prev=>{
+      const copy=[...prev]; copy[i]=!copy[i]; return copy;
+    });
+  }
+
+  function keepAll(){
+    setHeld(Array.from({length:dice.length}).fill(true));
+  }
+
+  function endTurn(){
+    // mark score
+    const pid = current;
+    const newRoundScores = { ...lastRoundScores, [pid]: turnScore };
+    setLastRoundScores(newRoundScores);
+
+    // next player or end round
+    const nextIdx = nextIndex(pid, order);
+    const isLastOfRound = nextIdx === order[0];
+
+    if(isLastOfRound){
+      // round end: evaluate elimination or tie-break
+      const alive = players.map((p,i)=>({i, alive:!p.eliminated}));
+      const aliveIdx = alive.filter(x=>x.alive).map(x=>x.i);
+      const scores = aliveIdx.map(i=>({i, s:newRoundScores[i] ?? 0}));
+      const minScore = Math.min(...scores.map(x=>x.s));
+      const maxScore = Math.max(...scores.map(x=>x.s));
+      const lowest = scores.filter(x=>x.s===minScore).map(x=>x.i);
+
+      // set next round order based on scores
+      const newOrder = sortOrderByRoundScores(players, newRoundScores);
+      setOrder(newOrder);
+
+      if(lowest.length>1){
+        // tie-breaker
+        setTieGroup(lowest);
+        setTieScores({});
+        setPhase("tiebreak");
+        resetTurnFor(lowest[0]);
+      } else {
+        // eliminate one with suspense
+        const outIdx = lowest[0];
+        setPhase("suspense");
         setTimeout(()=>{
-          const finalScore = needIn(dice) ? sum(dice) : 0;
-          setKept(Array(dice.length).fill(true));
-          setSelectKeep(Array(dice.length).fill(false));
-          setRoundOver(true);
-          setScore(finalScore);
-          setMessage(finalScore>0 ? 'Round over. You are in.' : 'Round over. No 1+4. Score 0.');
-          setRolling(false);
-        }, 500);
-      };
-
-      const submitScore = () => {
-        const roster = tieGroup ? tieGroup : active;
-        const name = roster[currentIndex];
-        const nextScores = { ...scores, [name]: score };
-        setScores(nextScores);
-        const nextIndex = currentIndex + 1;
-        if (nextIndex < roster.length){
-          setCurrentIndex(nextIndex);
-        } else {
-          evaluateRoundWithSuspense(nextScores, roster);
-        }
-      };
-
-      function evaluateRoundWithSuspense(sc, roster){
-        setRevealing(true);
-        setTimeout(()=>{
-          setRevealing(false);
-          evaluateRound(sc, roster);
+          setPlayers(prev=>{
+            const copy=[...prev];
+            copy[outIdx] = { ...copy[outIdx], eliminated:true };
+            return copy;
+          });
+          const aliveCount = players.filter(p=>!p.eliminated).length - 1; // minus eliminated
+          if(aliveCount<=1){
+            setPhase("victory");
+          } else {
+            // next round
+            setRound(r=>r+1);
+            setLastRoundScores({});
+            setPhase("round");
+            // highest scorer rolls last next round already handled by newOrder
+            resetTurnFor(newOrder[0]);
+          }
         }, 1200);
       }
+    } else {
+      // next player's turn
+      resetTurnFor(nextIdx);
+    }
+  }
 
-      function evaluateRound(sc, roster){
-        const entries = roster.map(n=> ({ name:n, s: sc[n] ?? 0 }));
-        const min = Math.min(...entries.map(e=> e.s));
-        const lows = entries.filter(e=> e.s === min).map(e=> e.name);
-        if (lows.length > 1){
-          setTieGroup(lows);
-          setScores({});
-          setCurrentIndex(0);
-          return;
-        }
-        const eliminated = lows[0];
-        let survivors = active.filter(n=> n !== eliminated);
-        const max = Math.max(...entries.filter(e=> e.name !== eliminated).map(e=> e.s));
-        const topNames = entries.filter(e=> e.name !== eliminated && e.s === max).map(e=> e.name);
-        const nonTop = survivors.filter(n=> !topNames.includes(n));
-        const nextOrder = [...nonTop, ...survivors.filter(n=> topNames.includes(n))];
+  // tiebreak flow
+  function endTieTurn(){
+    const pid = current;
+    const newTS = { ...tieScores, [pid]: turnScore };
+    setTieScores(newTS);
 
-        setHistory(h => [...h, { round: roundNum, scores: sc, eliminated }]);
+    const idxInTie = tieGroup.indexOf(pid);
+    const hasNext = idxInTie < tieGroup.length - 1;
 
-        if (nextOrder.length === 1){
-          setActive(nextOrder);
-          setPhase('done');
-          setTimeout(()=> setShowConfetti(true), 50);
-          return;
-        }
-        setActive(nextOrder);
-        setRoundNum(r => r+1);
-        setScores({});
-        setTieGroup(null);
-        setCurrentIndex(0);
+    if(hasNext){
+      resetTurnFor(tieGroup[idxInTie+1]);
+    } else {
+      // compare results
+      const items = tieGroup.map(i=>({i, s:newTS[i] ?? 0}));
+      const minS = Math.min(...items.map(x=>x.s));
+      const cand = items.filter(x=>x.s===minS).map(x=>x.i);
+      if(cand.length===1){
+        // eliminate cand[0]
+        setPhase("suspense");
+        setTimeout(()=>{
+          setPlayers(prev=>{
+            const copy=[...prev];
+            copy[cand[0]] = { ...copy[cand[0]], eliminated:true };
+            return copy;
+          });
+          // next round
+          setRound(r=>r+1);
+          setLastRoundScores({});
+          setPhase("round");
+          // order remains from previous round
+          const aliveOrder = order.filter(i=>!players[i].eliminated && i!==cand[0]);
+          const startIdx = aliveOrder[0] ?? 0;
+          resetTurnFor(startIdx);
+        }, 1000);
+      } else {
+        // tie persists. repeat among cand
+        setTieGroup(cand);
+        setTieScores({});
+        resetTurnFor(cand[0]);
       }
+    }
+  }
 
-      // views
-      if (phase === 'setup') return (
-        <div className="min-h-screen flex items-center justify-center px-4 py-8">
-          <div className="w-full max-w-xl bg-[rgba(253,245,217,0.1)] backdrop-blur rounded-3xl p-5 shadow-xl">
-            <h1 className="text-2xl font-semibold mb-1">One-Four Dice</h1>
-            <p className="text-sm text-[rgba(253,245,217,0.8)] mb-4">Pick rules. Add players. All roll; lowest is out. Highest rolls last next round.</p>
+  function onReset(){
+    setPlayers([]);
+    setOrder([]);
+    setDiceCount(6);
+    setPhase("setup");
+    setCurrent(0);
+    setRound(1);
+    setLastRoundScores({});
+    setTieGroup([]);
+    setTieScores({});
+    setDice([]);
+    setHeld([]);
+    setFirstRoll(true);
+    setTurnDone(false);
+  }
 
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-[rgba(253,245,217,0.1)] rounded-2xl p-3">
-                <div className="text-xs text-[rgba(253,245,217,0.8)] mb-1">Dice per round</div>
-                <div className="flex gap-2">
-                  <button className={`${diceCount===5?'bg-[var(--cream)] text-[var(--navy)]':'bg-[rgba(253,245,217,0.2)]'} px-3 py-2 rounded-xl font-semibold`} onClick={()=>setDiceCount(5)}>5</button>
-                  <button className={`${diceCount===6?'bg-[var(--cream)] text-[var(--navy)]':'bg-[rgba(253,245,217,0.2)]'} px-3 py-2 rounded-xl font-semibold`} onClick={()=>setDiceCount(6)}>6</button>
-                  <button className={`${diceCount===7?'bg-[var(--cream)] text-[var(--navy)]':'bg-[rgba(253,245,217,0.2)]'} px-3 py-2 rounded-xl font-semibold`} onClick={()=>setDiceCount(7)}>7</button>
-                </div>
-              </div>
-              <div className="bg-[rgba(253,245,217,0.1)] rounded-2xl p-3">
-                <div className="text-xs text-[rgba(253,245,217,0.8)] mb-1">Players</div>
-                <div className="flex items-center gap-2">
-                  <button className="px-3 py-2 rounded-xl bg-[rgba(253,245,217,0.2)]" onClick={addPlayer}>+ Add</button>
-                </div>
-              </div>
-            </div>
+  // derived
+  const alivePlayers = players.filter(p=>!p.eliminated);
+  const currentPlayer = players[current];
 
-            <div className="space-y-2 max-h-64 overflow-auto pr-1">
-              {names.map((n,i)=> (
-                <div key={i} className="flex gap-2 items-center">
-                  <input className="flex-1 px-3 py-2 rounded-xl bg-[rgba(253,245,217,0.15)] focus:bg-[rgba(253,245,217,0.2)] outline-none text-[var(--cream)] placeholder:[color:rgba(253,245,217,0.7)]" placeholder={`Player ${i+1} name`} value={n} onChange={(e)=> setNames(names.map((v,idx)=> idx===i? e.target.value : v))} />
-                  <button className="px-3 py-2 rounded-xl bg-[rgba(253,245,217,0.15)]" onClick={()=>removePlayer(i)}>Remove</button>
-                </div>
+  if(phase==="setup"){
+    return <Setup onStart={start} />
+  }
+
+  const topOfOrder = order[order.length-1];
+
+  return (
+    <div className="space-y-4">
+      <Header>
+        <div className="flex items-center gap-2">
+          <span className="badge rounded-full px-2 py-1 text-xs">Round {round}</span>
+          <span className="text-xs opacity-70">{alivePlayers.length} in play</span>
+        </div>
+      </Header>
+
+      <div className="grid gap-4">
+        <div className="card rounded-2xl p-4 shadow-soft">
+          <div className="flex items-center justify-between mb-3">
+            <div className="font-semibold">Current Turn</div>
+            <div className="text-sm opacity-80">{phase==="tiebreak" ? "Tie-breaker" : "Standard round"}</div>
+          </div>
+
+          <PlayerBadge
+            name={currentPlayer?.name ?? "Player"}
+            active={true}
+            out={false}
+            score={turnScore}
+            inFlag={inFlag}
+            lastRoundTop={topOfOrder===current}
+          />
+
+          <div className="mt-4 grid grid-cols-5 sm:grid-cols-6 gap-2">
+            {dice.map((v,i)=>(
+              <Dice key={i}
+                value={v}
+                held={held[i]}
+                empty={v===null}
+                rolling={rolling}
+                onToggle={()=>toggleHold(i)}
+              />
+            ))}
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button onClick={roll} disabled={rolling || turnDone}
+              className={`rounded-2xl py-3 font-semibold ${turnDone?'btn-outline opacity-60':'btn'} disabled:opacity-60`}>
+              {firstRoll ? "Roll" : "Re-roll"}
+            </button>
+            <button onClick={keepAll} disabled={turnDone || firstRoll}
+              className="btn-outline rounded-2xl py-3 font-semibold disabled:opacity-60">
+              Keep All
+            </button>
+          </div>
+
+          <div className="mt-3 text-sm opacity-90">
+            <div>Need at least one <span className="font-semibold">1</span> and one <span className="font-semibold">4</span> to score.</div>
+            <div className="mt-1">Score: {inFlag ? turnScore : 0}</div>
+          </div>
+
+          <div className="mt-4">
+            <button
+              onClick={()=> phase==="tiebreak" ? endTieTurn() : endTurn()}
+              disabled={!turnDone}
+              className="btn-red rounded-2xl py-3 px-5 font-semibold w-full disabled:opacity-60">
+              End Turn
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="card rounded-2xl p-4 shadow-soft">
+            <div className="font-semibold mb-2">Turn Order</div>
+            <div className="space-y-2">
+              {order.filter(i=>!players[i].eliminated).map(i=>(
+                <PlayerBadge
+                  key={i}
+                  name={players[i].name}
+                  active={i===current}
+                  out={false}
+                  score={lastRoundScores[i]}
+                  inFlag={(lastRoundScores[i] ?? 0) > 0}
+                  lastRoundTop={topOfOrder===i}
+                />
               ))}
             </div>
-
-            <div className="mt-4 flex justify-between items-center">
-              <RulesSummary />
-              <button className="px-4 py-3 rounded-2xl bg-[var(--red)] text-[var(--cream)] font-semibold" onClick={startTournament}>Start</button>
-            </div>
-          </div>
-        </div>
-      );
-
-      if (phase === 'play'){
-        const roster = tieGroup ? tieGroup : active;
-        const who = roster[currentIndex] || '';
-        const everyoneScored = roster.every(n => scores[n] !== undefined);
-        return (
-          <div className="min-h-screen px-4 py-6 flex flex-col items-center">
-            <div className="w-full max-w-5xl grid md:grid-cols-[1fr_420px] gap-4">
-              <Leaderboard active={active} scores={scores} roundNum={roundNum} tieGroup={tieGroup} history={history} current={who} revealing={revealing} />
-
-              <div className="bg-[rgba(253,245,217,0.1)] rounded-3xl p-4">
-                <h2 className="text-xl font-semibold mb-1">Round {roundNum}{tieGroup? ' • Tie-break' : ''}</h2>
-                <div className="text-sm text-[rgba(253,245,217,0.8)] mb-3">Current: <span className="font-semibold text-[var(--cream)]">{who}</span></div>
-
-                <DiceTray dice={dice} kept={kept} selectKeep={selectKeep} onToggle={(i)=> onToggle(i)} disabled={roundOver || rolling} rolling={rolling} />
-
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  <Stat label="Kept" value={`${kept.filter(Boolean).length}/${dice.length}`} />
-                  <Stat label="Score" value={roundOver ? score : '—'} hint={roundOver ? (score>0 ? 'in' : 'no 1+4') : undefined} />
-                  <Stat label="Dice" value={dice.length} />
-                </div>
-
-                <div className="flex gap-2">
-                  {!hasRolled ? (
-                    <button
-                      className="flex-1 px-4 py-3 rounded-2xl font-semibold bg-[var(--red)] text-[var(--cream)]"
-                      onClick={firstRoll}
-                      disabled={rolling}
-                    >Roll</button>
-                  ) : (
-                    <button
-                      className={`flex-1 px-4 py-3 rounded-2xl font-semibold ${(!roundOver && (kept.filter(Boolean).length<dice.length) && selectKeep.some(Boolean) && !rolling)? 'bg-[var(--red)] text-[var(--cream)]':'bg-[rgba(253,245,217,0.2)] text-[var(--cream)]/80'}`}
-                      onClick={keepAndRoll}
-                      disabled={roundOver || rolling || !(kept.filter(Boolean).length<dice.length) || !selectKeep.some(Boolean)}
-                    >Keep & Roll</button>
-                  )}
-                  <button className="px-4 py-3 rounded-2xl bg-[rgba(253,245,217,0.15)] font-semibold" onClick={endNow} disabled={roundOver || rolling || !hasRolled}>End Now</button>
-                  <!-- Removed Re-roll button -->
-                </div>
-
-                <p className="mt-2 text-sm text-[rgba(253,245,217,0.8)]">{rolling? 'Rolling…' : revealing? 'Revealing…' : message}</p>
-
-                {roundOver && (
-                  <button className="mt-3 w-full px-4 py-3 rounded-2xl bg-[var(--cream)] text-[var(--navy)] font-semibold" onClick={submitScore} disabled={rolling}>Submit Score</button>
-                )}
-
-                {everyoneScored && !tieGroup && (
-                  <div className="mt-3 text-sm text-[rgba(253,245,217,0.8)]">All scores in. Lowest will be eliminated. Highest will roll last next round.</div>
-                )}
-              </div>
-            </div>
-
-            {revealing && <RevealCurtain />}
-          </div>
-        );
-      }
-
-      if (phase === 'done'){
-        const champ = active[0];
-        return (
-          <div className="min-h-screen flex items-center justify-center px-4 py-8">
-            <div className="w-full max-w-md bg-[rgba(253,245,217,0.1)] rounded-3xl p-6 text-center relative overflow-hidden">
-              <h2 className="text-2xl font-semibold mb-2">Champion</h2>
-              <div className="text-4xl font-bold text-[var(--cream)] mb-2 pop">{champ}</div>
-              <div className="text-sm text-[rgba(253,245,217,0.85)] mb-4">One-Four Dice Tournament Winner</div>
-              <button className="px-4 py-3 rounded-2xl bg-[var(--red)] text-[var(--cream)] font-semibold" onClick={()=>{ setShowConfetti(false); setPhase('setup'); setActive([]); setRoundNum(1); setCurrentIndex(0); setScores({}); setTieGroup(null); setHistory([]); }}>New Tournament</button>
-              {showConfetti && <Confetti />}
-              <TrophyRays />
-            </div>
-          </div>
-        );
-      }
-    }
-
-    function RevealCurtain(){
-      return (
-        <div className="fixed inset-0 flex items-center justify-center bg-[rgba(11,31,42,0.7)] backdrop-blur-sm z-40">
-          <div className="text-4xl font-bold text-[var(--cream)] animate-pulse">Revealing…</div>
-        </div>
-      );
-    }
-
-    function Stat({label, value, hint}){
-      return (
-        <div className="bg-[rgba(253,245,217,0.1)] rounded-2xl p-3 text-center">
-          <div className="text-xs uppercase text-[rgba(253,245,217,0.8)]">{label}</div>
-          <div className="text-xl font-semibold text-[var(--cream)]">{value}</div>
-          {hint && <div className="text-[10px] text-[rgba(253,245,217,0.8)]">{hint}</div>}
-        </div>
-      );
-    }
-
-    function RulesSummary(){
-      return (
-        <div className="text-sm text-[rgba(253,245,217,0.85)]">
-          <div className="font-semibold text-[var(--cream)]">Rules</div>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Roll 5, 6, or 7 dice. Keep at least 1 each roll.</li>
-            <li>Round ends when all dice are kept.</li>
-            <li>You must have a 1 and a 4 to score.</li>
-            <li>If in, score = sum of all dice. Else score = 0.</li>
-            <li>All players roll each round. Lowest score is eliminated. Highest scorer rolls last next round.</li>
-          </ul>
-        </div>
-      );
-    }
-
-    function DiceTray({ dice, kept, selectKeep, onToggle, disabled, rolling}){
-      return (
-        <div className="grid gap-2 mb-4" style={{gridTemplateColumns: `repeat(${dice.length}, minmax(36px, 1fr))`}}>
-          {dice.map((v,i)=> (
-            <Die key={i} value={v} kept={kept[i]} selected={selectKeep[i]} onClick={()=> onToggle(i)} disabled={disabled} rolling={rolling && !kept[i]} />
-          ))}
-        </div>
-      );
-    }
-
-    function Die({ value, kept, selected, onClick, disabled, rolling }){
-      const base = 'die aspect-square rounded-2xl flex items-center justify-center shadow transition-transform relative overflow-hidden';
-      let classes = '';
-      if (kept) classes = 'bg-[var(--cream)] text-[var(--navy)] pop';
-      else if (selected) classes = 'bg-[var(--red)] text-[var(--cream)] scale-105';
-      else classes = 'bg-[rgba(253,245,217,0.15)] text-[var(--cream)]';
-      return (
-        <button onClick={onClick} disabled={disabled||kept} className={`${base} ${classes} ${rolling? 'rolling':''}`} aria-label={`Die${kept? ' kept': selected? ' selected':''}`}>
-          <Pips n={value} />
-        </button>
-      );
-    }
-
-    function Pips({n}){
-      const spots = {
-        1: [[50,50]],
-        2: [[25,25],[75,75]],
-        3: [[25,25],[50,50],[75,75]],
-        4: [[25,25],[75,25],[25,75],[75,75]],
-        5: [[25,25],[75,25],[50,50],[25,75],[75,75]],
-        6: [[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]
-      }[n] || [];
-      return (
-        <>
-          {spots.map(([x,y],i)=> <span key={i} className="pip" style={{left:`calc(${x}% - 5px)`, top:`calc(${y}% - 5px)`}} />)}
-        </>
-      );
-    }
-
-    function Leaderboard({ active, scores, roundNum, tieGroup, history, current, revealing }){
-      return (
-        <div className="bg-[rgba(253,245,217,0.1)] rounded-3xl p-4 overflow-auto relative">
-          <h2 className="text-xl font-semibold mb-3">Leaderboard</h2>
-          <div className="space-y-2">
-            {active.map((name)=>{
-              const s = scores[name];
-              const isCurrent = current === name;
-              const inTie = tieGroup ? tieGroup.includes(name) : false;
-              return (
-                <div key={name} className={`rounded-2xl p-3 flex items-center justify-between ${isCurrent? 'bg-[var(--cream)] text-[var(--navy)]':'bg-[rgba(253,245,217,0.12)]'}`}>
-                  <div className="font-semibold truncate">{name}</div>
-                  <div className="text-sm opacity-80">{s===undefined? '—' : s}{inTie? ' • tie' : ''}</div>
-                </div>
-              );
-            })}
           </div>
 
-          {history.length>0 && (
-            <div className="mt-4">
-              <div className="text-sm font-semibold mb-2">Rounds</div>
-              <div className="space-y-2 max-h-48 overflow-auto pr-1">
-                {history.map((r,i)=> (
-                  <div key={i} className="bg-[rgba(253,245,217,0.08)] rounded-2xl p-3 text-sm">
-                    <div className="mb-1">Round {r.round} • Eliminated: <span className="font-semibold">{r.eliminated}</span></div>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(r.scores).map(([n,s])=> (
-                        <span key={n} className="px-2 py-1 bg-[rgba(253,245,217,0.15)] rounded-lg">{n}: {s}</span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {revealing && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="px-4 py-2 rounded-xl bg-[var(--cream)] text-[var(--navy)] font-semibold shadow">Revealing scores…</div>
-            </div>
-          )}
+          <Bracket players={players} />
         </div>
-      );
-    }
+      </div>
 
-    function Confetti(){
-      const ref = useRef(null);
-      useEffect(()=>{
-        const el = ref.current;
-        if(!el) return;
-        const W = window.innerWidth;
-        const N = 120;
-        for(let i=0;i<N;i++){
-          const piece = document.createElement('i');
-          piece.style.left = Math.random()*W + 'px';
-          piece.style.top = -20 - Math.random()*200 + 'px';
-          piece.style.background = i%3===0? 'var(--red)': (i%3===1? 'var(--cream)' : '#ffffff');
-          piece.style.transform = `rotate(${Math.random()*180}deg)`;
-          piece.style.animation = `fall ${2 + Math.random()*2.2}s linear ${Math.random()*0.6}s forwards`;
-          el.appendChild(piece);
-        }
-        const t = setTimeout(()=> { if (el) el.innerHTML=''; }, 4000);
-        return ()=> { clearTimeout(t); if (el) el.innerHTML=''; };
-      },[]);
-      return <div ref={ref} className="confetti" />;
-    }
+      {phase==="suspense" && <SuspenseOverlay text="Lowest score will be eliminated." />}
 
-    function TrophyRays(){
-      return (
-        <svg className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-30" width="500" height="220" viewBox="0 0 500 220" fill="none">
-          {[...Array(16)].map((_,i)=> (
-            <line key={i} x1="250" y1="0" x2={250 + 230*Math.cos((i/16)*Math.PI)} y2={110 + 100*Math.sin((i/16)*Math.PI)} stroke="#FDF5D9" strokeWidth="2" />
-          ))}
-        </svg>
-      );
-    }
+      {phase==="victory" && (
+        <Victory
+          winner={players.find(p=>!p.eliminated) ?? {name:"Winner"}}
+          onReset={onReset}
+        />
+      )}
+    </div>
+  );
+}
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+function App(){
+  return (
+    <div>
+      <Game/>
+      <footer className="mt-6 text-center text-xs opacity-60">Theme: navy · cream · red</footer>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+
   </script>
 </body>
 </html>
