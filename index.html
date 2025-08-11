@@ -29,7 +29,6 @@ button.ghost{background:transparent;border:1px dashed rgba(255,255,255,.35);colo
 .brand{display:flex;gap:10px;align-items:center}
 .brand .icon{width:36px;height:36px;border-radius:10px;background:var(--cream);display:grid;place-items:center;color:var(--navy);font-weight:800}
 .pill{padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font-weight:600}
-.hr{height:1px;border:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.24),transparent)}
 .hidden{display:none}
 .scene{min-height:72dvh;position:relative}
 .hud{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
@@ -68,15 +67,10 @@ button.ghost{background:transparent;border:1px dashed rgba(255,255,255,.35);colo
 <div id="toast" class="toast hidden"></div>
 
 <script>
-/* ========== Audio stubs ========== */
-const SFX = {
-  hit: new Howl({src:[],volume:.5}),
-  splash: new Howl({src:[],volume:.5}),
-  sand: new Howl({src:[],volume:.5}),
-  cup: new Howl({src:[],volume:.6})
-};
+/* ===== Audio stubs ===== */
+const SFX = { hit:new Howl({src:[],volume:.5}), splash:new Howl({src:[],volume:.5}), sand:new Howl({src:[],volume:.5}), cup:new Howl({src:[],volume:.6}) };
 
-/* ========== Helpers ========== */
+/* ===== Helpers ===== */
 const $=(s,r=document)=>r.querySelector(s);
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const choice=a=>a[Math.floor(Math.random()*a.length)];
@@ -84,61 +78,40 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const toast=$("#toast");
 function showToast(txt,ms=1500){ toast.textContent=txt; toast.classList.remove("hidden"); clearTimeout(showToast._t); showToast._t=setTimeout(()=>toast.classList.add("hidden"),ms); }
 
-/* ========== State ========== */
-const STATE={
-  distYds:409,onGreen:false,distFt:0,
-  shots:0,penalties:0,finished:false,pickedUp:false,
-  path:[{x:0.05,y:0.60}], _history:[]
-};
+/* ===== State ===== */
+const STATE={ distYds:409,onGreen:false,distFt:0, shots:0,penalties:0,finished:false,pickedUp:false, path:[{x:0.05,y:0.60}], _history:[] };
 
 const CLUBS={
-  // Slower overall; safe clubs much easier (wider perfect, slower meters)
-  driver:    {id:"driver",name:"The Big Dog",kind:"aggr",max:260,perf:0.10,anglePenalty:0.20,spdA:0.010,spdP:0.010,copy:"Let it fly."},
-  drivingIr: {id:"drivingIr",name:"The Fairway Finder",kind:"safe",max:210,perf:0.30,anglePenalty:0.01,spdA:0.006,spdP:0.006,copy:"Short grass energy."},
-  wood3:     {id:"wood3",name:"The Long Shot",kind:"aggr",max:235,perf:0.12,anglePenalty:0.18,spdA:0.009,spdP:0.009,copy:"Get it dancing."},
-  iron5:     {id:"iron5",name:"The Layup",kind:"safe",max:190,perf:0.32,anglePenalty:0.01,spdA:0.006,spdP:0.006,copy:"Smart is sexy."},
-  iron6:     {id:"iron6",name:"The Nudge",kind:"aggr",max:170,perf:0.14,anglePenalty:0.16,spdA:0.008,spdP:0.008,copy:"Thread it."},
-  iron8:     {id:"iron8",name:"The Cozy One",kind:"safe",max:135,perf:0.34,anglePenalty:0.01,spdA:0.005,spdP:0.005,copy:"Pin-high vibes."},
-  pw:        {id:"pw",name:"The Flighted Wedge",kind:"aggr",max:115,perf:0.16,anglePenalty:0.14,spdA:0.008,spdP:0.007,copy:"Send it soft."},
-  lw60:      {id:"lw60",name:"The Float",kind:"safe",max:90,perf:0.36,anglePenalty:0.01,spdA:0.005,spdP:0.005,copy:"Up. Down. Close."},
-  putter:    {id:"putter",name:"Putter",kind:"putt",max:90,perf:0.55,anglePenalty:0,spdA:0,spdP:0.004,copy:"Walk it in."} // 90ft reach
+  driver:{id:"driver",name:"The Big Dog",kind:"aggr",max:260,perf:0.10,anglePenalty:0.20,spdA:0.010,spdP:0.010,copy:"Let it fly."},
+  drivingIr:{id:"drivingIr",name:"The Fairway Finder",kind:"safe",max:210,perf:0.30,anglePenalty:0.01,spdA:0.006,spdP:0.006,copy:"Short grass energy."},
+  wood3:{id:"wood3",name:"The Long Shot",kind:"aggr",max:235,perf:0.12,anglePenalty:0.18,spdA:0.009,spdP:0.009,copy:"Get it dancing."},
+  iron5:{id:"iron5",name:"The Layup",kind:"safe",max:190,perf:0.32,anglePenalty:0.01,spdA:0.006,spdP:0.006,copy:"Smart is sexy."},
+  iron6:{id:"iron6",name:"The Nudge",kind:"aggr",max:170,perf:0.14,anglePenalty:0.16,spdA:0.008,spdP:0.008,copy:"Thread it."},
+  iron8:{id:"iron8",name:"The Cozy One",kind:"safe",max:135,perf:0.34,anglePenalty:0.01,spdA:0.005,spdP:0.005,copy:"Pin-high vibes."},
+  pw:{id:"pw",name:"The Flighted Wedge",kind:"aggr",max:115,perf:0.16,anglePenalty:0.14,spdA:0.008,spdP:0.007,copy:"Send it soft."},
+  lw60:{id:"lw60",name:"The Float",kind:"safe",max:90,perf:0.36,anglePenalty:0.01,spdA:0.005,spdP:0.005,copy:"Up. Down. Close."},
+  putter:{id:"putter",name:"Putter",kind:"putt",max:90,perf:0.55,anglePenalty:0,spdA:0,spdP:0.004,copy:"Walk it in."}
 };
 
-const COMMENTARY={
-  fairway:["Striped it.","Center-cut.","Rolling nice."],
-  rough:["Found the long stuff, still playable.","Fluffy lie incoming."],
-  trees:["Pine-cone collector.","90% air, 10% character."],
-  water:["Nice day for a swim.","Splashy detour."],
-  sand:["Beach break.","Sandy toes, steady pose."],
-  green:["On the dance floor.","Showtime."],
-  cup:["Walked it in.","Dead center."]
-};
+const COMMENTARY={ fairway:["Striped it.","Center-cut.","Rolling nice."], rough:["Found the long stuff, still playable.","Fluffy lie incoming."], trees:["Pine-cone collector.","90% air, 10% character."], water:["Nice day for a swim.","Splashy detour."], sand:["Beach break.","Sandy toes, steady pose."], green:["On the dance floor.","Showtime."], cup:["Walked it in.","Dead center."] };
 
-const scene=$("#scene");
-$("#pickupFloating").onclick=finishPickup;
+const scene=$("#scene"); $("#pickupFloating").onclick=finishPickup;
 
-function resetState(){
-  STATE.distYds=409; STATE.onGreen=false; STATE.distFt=0;
-  STATE.shots=0; STATE.penalties=0; STATE.finished=false; STATE.pickedUp=false;
-  STATE.path=[{x:0.05,y:0.60}]; STATE._history=[];
-}
+function resetState(){ STATE.distYds=409; STATE.onGreen=false; STATE.distFt=0; STATE.shots=0; STATE.penalties=0; STATE.finished=false; STATE.pickedUp=false; STATE.path=[{x:0.05,y:0.60}]; STATE._history=[]; }
 
-/* ========== Title & Leaderboard ========== */
+/* ===== Title & Leaderboard ===== */
 function sceneTitle(){
   scene.innerHTML=`
     <div class="card stack" style="padding:22px;max-width:900px">
       <div class="badge">Bogey Hound · 18th · 409 yds</div>
       <h1>The sun is down,<br/>the vibes are up.<br/>Let’s walk it in.</h1>
       <p class="small">Power first. Angle second. Auto-hit. Pick up anytime.</p>
-      <div class="row">
-        <button id="start">Start</button>
-        <button class="secondary" id="lb">Leaderboard</button>
-      </div>
+      <div class="row"><button id="start">Start</button><button class="secondary" id="lb">Leaderboard</button></div>
     </div>`;
   $("#start").onclick=()=>{ resetState(); sceneClubSelect(); };
   $("#lb").onclick=sceneLeaderboard;
 }
-const LB_KEY="bh_walkin_lb_v5";
+const LB_KEY="bh_walkin_lb_v6";
 function loadLB(){ try{return JSON.parse(localStorage.getItem(LB_KEY)||"[]")}catch(e){return[]} }
 function saveLB(i,s,tag){ const lb=loadLB(); lb.push({i,s,tag,t:Date.now()}); lb.sort((a,b)=>a.s-b.s||a.t-b.t); localStorage.setItem(LB_KEY,JSON.stringify(lb.slice(0,10))); }
 function sceneLeaderboard(){
@@ -156,7 +129,7 @@ function sceneLeaderboard(){
   $("#back").onclick=sceneTitle;
 }
 
-/* ========== Minimap / Overhead ========== */
+/* ===== Minimap / Overhead ===== */
 function drawMini(canvas, zoomGreen=false){
   const dpr=Math.max(1,Math.floor(window.devicePixelRatio||1));
   const bb=canvas.getBoundingClientRect();
@@ -166,22 +139,19 @@ function drawMini(canvas, zoomGreen=false){
   // base
   ctx.fillStyle="#0e2a26"; ctx.fillRect(0,0,bb.width,bb.height);
 
-  // Rough wide strip
-  ctx.fillStyle=getCSS('--rough');
-  roundRect(ctx, bb.width*0.02, bb.height*0.34, bb.width*0.96, bb.height*0.44, 28, true);
-
+  // Rough
+  ctx.fillStyle=getCSS('--rough'); roundRect(ctx, bb.width*0.02, bb.height*0.34, bb.width*0.96, bb.height*0.44, 28, true);
   // Fairway
-  ctx.fillStyle=getCSS('--fair');
-  roundRect(ctx, bb.width*0.06, bb.height*0.40, bb.width*0.88, bb.height*0.32, 26, true);
+  ctx.fillStyle=getCSS('--fair'); roundRect(ctx, bb.width*0.06, bb.height*0.40, bb.width*0.88, bb.height*0.32, 26, true);
 
-  // Pines along LEFT/top edge for first ~300y from tee (300/409 ≈ 0.73 of width from tee)
+  // Pines up the left/top ≈ first 300y (300/409 ≈ 0.73 of fairway run)
   const pEndX = bb.width*(0.06 + 0.88*0.73);
   const topY = bb.height*0.40;
   ctx.fillStyle=getCSS('--tree');
   for(let x=bb.width*0.06; x<pEndX; x+=18){ drawPine(ctx, x, topY-6, 14, 22); }
 
-  // Water ribbon along RIGHT/bottom of fairway starting earlier (~230y from tee => 230/409 ≈ 0.56 of width)
-  const wStartX = bb.width*(0.06 + 0.88*0.56);
+  // Water starts earlier ~200y (200/409 ≈ 0.49 of fairway run)
+  const wStartX = bb.width*(0.06 + 0.88*0.49);
   ctx.fillStyle=getCSS('--water');
   ctx.beginPath();
   ctx.moveTo(wStartX, bb.height*0.72);
@@ -190,24 +160,19 @@ function drawMini(canvas, zoomGreen=false){
   ctx.lineTo(wStartX, bb.height*0.96);
   ctx.closePath(); ctx.fill();
 
-  // Bunker mid-left fairway at ~350y from tee (350/409 ≈ 0.86 toward hole)
+  // Fairway bunker ~350y mid-left (350/409 ≈ 0.86 run)
   const bx = bb.width*(0.06 + 0.88*(350/409));
-  const by = bb.height*0.48; // mid-left
+  const by = bb.height*0.48;
   ctx.fillStyle=getCSS('--sand');
   ctx.beginPath(); ctx.ellipse(bx, by, bb.width*0.035, bb.height*0.04, 0, 0, Math.PI*2); ctx.fill();
 
   // Sand short-left of green
   const greenCx = bb.width*0.90, greenCy = bb.height*0.56, greenRx = bb.width*0.08, greenRy = bb.height*0.06;
-  ctx.fillStyle=getCSS('--sand');
-  ctx.beginPath();
-  ctx.ellipse(greenCx - greenRx*0.60, greenCy+greenRy*0.10, greenRx*0.38, greenRy*0.26, 0, 0, Math.PI*2);
-  ctx.fill();
+  ctx.fillStyle=getCSS('--sand'); ctx.beginPath();
+  ctx.ellipse(greenCx - greenRx*0.60, greenCy+greenRy*0.10, greenRx*0.38, greenRy*0.26, 0, 0, Math.PI*2); ctx.fill();
 
-  // Green (no features except flag)
-  ctx.fillStyle="#2f7a63";
-  ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
-
-  // Flag/cup
+  // Green (flag only)
+  ctx.fillStyle="#2f7a63"; ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
   const holeX = greenCx+greenRx*0.28, holeY = greenCy;
   ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
   ctx.fillStyle=getCSS('--red'); ctx.beginPath(); ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
@@ -215,23 +180,18 @@ function drawMini(canvas, zoomGreen=false){
   // Trace path
   const pts = STATE.path.map(p=>({x:lerp(0,bb.width,p.x), y:lerp(0,bb.height,p.y)}));
 
-  // Zoom green view when putting
+  // Zoom on green when putting
   if(zoomGreen || STATE.onGreen){
     const pad=12, gx=greenCx-greenRx-pad, gy=greenCy-greenRy-pad, gw=greenRx*2+pad*2, gh=greenRy*2+pad*2;
     ctx.save(); ctx.clearRect(0,0,bb.width,bb.height); ctx.fillStyle="#0e2a26"; ctx.fillRect(0,0,bb.width,bb.height);
     const sx=bb.width/gw, sy=bb.height/gh, s=Math.min(sx,sy);
     ctx.translate(-gx*s,-gy*s); ctx.scale(s,s);
-
-    // Green only
     ctx.fillStyle="#2f7a63"; ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle="#fff"; ctx.lineWidth=2/s; ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
     ctx.fillStyle=getCSS('--red'); ctx.beginPath(); ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
-
-    ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=2/s; ctx.beginPath();
-    pts.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
+    ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=2/s; ctx.beginPath(); pts.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
     const last=pts[pts.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4/s,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-    return;
+    ctx.restore(); return;
   }
 
   ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=2; ctx.beginPath();
@@ -247,7 +207,7 @@ function drawPine(ctx,cx,baseY,w,h){
   ctx.fillRect(cx-2, baseY-h*0.15, 4, h*0.15);
 }
 
-/* ========== Club selection ========== */
+/* ===== Club selection ===== */
 function clubOptionsByDist(){
   const d=STATE.distYds;
   if(STATE.onGreen) return [{key:"putter",data:CLUBS.putter}];
@@ -256,7 +216,6 @@ function clubOptionsByDist(){
   if(d>60)  return [{key:"iron6",data:CLUBS.iron6},{key:"iron8",data:CLUBS.iron8}];
   return [{key:"pw",data:CLUBS.pw},{key:"lw60",data:CLUBS.lw60}];
 }
-
 function sceneClubSelect(){
   scene.innerHTML="";
   const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="960px";
@@ -292,7 +251,7 @@ function sceneClubSelect(){
   });
 }
 
-/* ========== Swing: POWER → ANGLE (auto-hit) ========== */
+/* ===== Swing: POWER → ANGLE (auto-hit) ===== */
 function sceneSwingPowerFirst(key, club){
   scene.innerHTML="";
   const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="960px";
@@ -306,14 +265,14 @@ function sceneSwingPowerFirst(key, club){
   header.innerHTML=`<div class="pill">1/2 – POWER · ${club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
   wrap.appendChild(header);
 
-  // POWER meter (animation + ideal band + numeric only)
+  // POWER meter (animated + ideal band + numeric only)
   const box=document.createElement("div"); box.className="meter";
   box.innerHTML=`<canvas id="power"></canvas><div class="overlay"><div class="readout" id="powLabel">0</div></div>`;
   wrap.appendChild(box);
 
   const ctrls=document.createElement("div"); ctrls.className="row";
   ctrls.innerHTML=`<button class="secondary" id="back">Back</button><button id="toggleP">Pause</button><button id="lockP" class="danger">Lock Power</button>`;
-  wrap.appendChild(ctrls);
+  wrap.appendChild(ctrls);  /* FIXED: no more typo */
 
   $("#back").onclick=sceneClubSelect;
 
@@ -325,17 +284,10 @@ function sceneSwingPowerFirst(key, club){
   const spdP=club.spdP;
 
   function requiredPower(){
-    if(STATE.onGreen){
-      const ft = Math.max(1, STATE.distFt);
-      return Math.min(1, ft/club.max);
-    } else {
-      let lie=1; const prev = lastOutcome();
-      if(prev==="trees") lie=0.5;
-      else if(prev==="roughL"||prev==="roughR"||prev==="sand") lie=0.9;
-      const needed = Math.max(1, STATE.distYds);
-      const effMax = club.max*lie;
-      return Math.min(1, needed/Math.max(1,effMax));
-    }
+    if(STATE.onGreen){ return Math.min(1, Math.max(1,STATE.distFt)/club.max); }
+    let lie=1; const prev=lastOutcome(); if(prev==="trees") lie=0.5; else if(prev==="roughL"||prev==="roughR"||prev==="sand") lie=0.9;
+    const needed=Math.max(1,STATE.distYds), effMax=club.max*lie;
+    return Math.min(1, needed/Math.max(1,effMax));
   }
   function idealBandWidth(){ return STATE.onGreen ? (STATE.distFt<=8?0.50:STATE.distFt<=15?0.38:STATE.distFt<=30?0.30:0.24) : (club.kind==="safe"?0.34:0.18); }
 
@@ -343,38 +295,16 @@ function sceneSwingPowerFirst(key, club){
     const bb=pCVS.getBoundingClientRect();
     ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
     ctx.clearRect(0,0,bb.width,bb.height);
-
-    // rail
-    ctx.fillStyle="rgba(255,255,255,.09)";
-    ctx.fillRect(bb.width*.08, bb.height*.12, bb.width*.84, bb.height*.76);
-
-    // dynamic ideal band
+    ctx.fillStyle="rgba(255,255,255,.09)"; ctx.fillRect(bb.width*.08, bb.height*.12, bb.width*.84, bb.height*.76);
     const ideal=requiredPower(), band=idealBandWidth();
-    const ph=bb.height*.76*band;
-    const cyIdeal=bb.height*.88 - (bb.height*.76)*ideal;
-    const py=clamp(cyIdeal - ph/2, bb.height*.12, bb.height*.88-ph);
-    ctx.fillStyle="rgba(212,61,61,.32)";
-    ctx.fillRect(bb.width*.08, py, bb.width*.84, ph);
-
-    // cursor
+    const ph=bb.height*.76*band, cyIdeal=bb.height*.88 - (bb.height*.76)*ideal, py=clamp(cyIdeal - ph/2, bb.height*.12, bb.height*.88-ph);
+    ctx.fillStyle="rgba(212,61,61,.32)"; ctx.fillRect(bb.width*.08, py, bb.width*.84, ph);
     const cy = bb.height*.88 - cursorP*(bb.height*.76);
     ctx.fillStyle="#fff"; ctx.fillRect(bb.width*.50-10, cy-10, 20, 20);
-
-    // numeric readout only
-    const unit = STATE.onGreen? "ft" : "yds";
-    const maxMark = club.max*(STATE.onGreen?1:1);
-    const current = Math.round(maxMark*cursorP);
+    const unit = STATE.onGreen? "ft" : "yds"; const maxMark = club.max; const current = Math.round(maxMark*cursorP);
     $("#powLabel").textContent = current+" "+unit;
   }
-
-  function tick(){
-    if(!paused){
-      cursorP += spdP*dirP;
-      if(cursorP>1){cursorP=1;dirP=-1}
-      if(cursorP<0){cursorP=0;dirP=1}
-    }
-    drawPower(); raf=requestAnimationFrame(tick);
-  }
+  function tick(){ if(!paused){ cursorP+=spdP*dirP; if(cursorP>1){cursorP=1;dirP=-1} if(cursorP<0){cursorP=0;dirP=1} } drawPower(); raf=requestAnimationFrame(tick); }
   tick();
 
   pCVS.addEventListener("click", ()=> lockPower(cursorP));
@@ -382,10 +312,7 @@ function sceneSwingPowerFirst(key, club){
   $("#toggleP").onclick=()=>{ paused=!paused; $("#toggleP").textContent=paused?"Resume":"Pause"; };
   window.addEventListener("keydown", e=>{ if(e.code==="Space"){ e.preventDefault(); lockPower(cursorP);} });
 
-  function lockPower(val){
-    cancelAnimationFrame(raf);
-    sceneSwingAngleSecond(key, club, clamp(val,0,1));
-  }
+  function lockPower(val){ cancelAnimationFrame(raf); sceneSwingAngleSecond(key, club, clamp(val,0,1)); }
 }
 
 function sceneSwingAngleSecond(key, club, powerVal){
@@ -407,7 +334,7 @@ function sceneSwingAngleSecond(key, club, powerVal){
 
   const ctrls=document.createElement("div"); ctrls.className="row";
   ctrls.innerHTML=`<button class="secondary" id="back">Back</button><button id="toggleA">Pause</button><button id="lockA" class="danger">Lock Angle</button>`;
-  wrap.appendChild(ctrlls);
+  wrap.appendChild(ctrls);  /* FIXED: correct variable name */
 
   $("#back").onclick=sceneClubSelect;
 
@@ -422,37 +349,18 @@ function sceneSwingAngleSecond(key, club, powerVal){
     const bb=aCVS.getBoundingClientRect();
     ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
     ctx.clearRect(0,0,bb.width,bb.height);
-
-    // rail
-    ctx.fillStyle="rgba(255,255,255,.09)";
-    ctx.fillRect(bb.width*.08, bb.height*.46, bb.width*.84, bb.height*.08);
-
-    // perfect zone
-    const pw=bb.width*.84*club.perf;
-    const px=bb.width*.08 + bb.width*.84*0.5 - pw/2;
-    ctx.fillStyle="rgba(212,61,61,.32)";
-    ctx.fillRect(px, bb.height*.46, pw, bb.height*.08);
-
-    // hazard edges (anglePenalty)
+    ctx.fillStyle="rgba(255,255,255,.09)"; ctx.fillRect(bb.width*.08, bb.height*.46, bb.width*.84, bb.height*.08);
+    const pw=bb.width*.84*club.perf; const px=bb.width*.08 + bb.width*.84*0.5 - pw/2;
+    ctx.fillStyle="rgba(212,61,61,.32)"; ctx.fillRect(px, bb.height*.46, pw, bb.height*.08);
     if(club.anglePenalty>0){
       ctx.fillStyle="rgba(255,255,255,.16)";
       ctx.fillRect(bb.width*.08, bb.height*.46, bb.width*.84*club.anglePenalty, bb.height*.08);
       ctx.fillRect(bb.width*(.92 - .84*club.anglePenalty), bb.height*.46, bb.width*.84*club.anglePenalty, bb.height*.08);
     }
-
-    // cursor
     const cx = bb.width*.08 + cursorA*bb.width*.84;
     ctx.fillStyle="#fff"; ctx.fillRect(cx-10, bb.height*.42, 20, bb.height*.16);
   }
-
-  function tick(){
-    if(!paused){
-      cursorA += spdA*dirA;
-      if(cursorA>1){cursorA=1;dirA=-1}
-      if(cursorA<0){cursorA=0;dirA=1}
-    }
-    drawAngle(); raf=requestAnimationFrame(tick);
-  }
+  function tick(){ if(!paused){ cursorA+=spdA*dirA; if(cursorA>1){cursorA=1;dirA=-1} if(cursorA<0){cursorA=0;dirA=1} } drawAngle(); raf=requestAnimationFrame(tick); }
   tick();
 
   aCVS.addEventListener("click", ()=>lockAngle(cursorA));
@@ -460,27 +368,22 @@ function sceneSwingAngleSecond(key, club, powerVal){
   $("#toggleA").onclick=()=>{ paused=!paused; $("#toggleA").textContent=paused?"Resume":"Pause"; };
   window.addEventListener("keydown", e=>{ if(e.code==="Enter"){ e.preventDefault(); lockAngle(cursorA);} });
 
-  function lockAngle(val){
-    cancelAnimationFrame(raf);
-    // AUTO-HIT right away (no extra button)
-    resolveSwing(club, clamp(val,0,1), powerVal);
-  }
+  function lockAngle(val){ cancelAnimationFrame(raf); resolveSwing(club, clamp(val,0,1), powerVal); } // AUTO-HIT
 }
 
-/* ========== Outcome logic ========== */
+/* ===== Outcome logic (with bunker + earlier water) ===== */
 const OUT={ TREES:"trees", ROUGH_L:"roughL", FAIRWAY:"fairway", ROUGH_R:"roughR", WATER:"water", SAND:"sand", GREEN:"green", CUP:"cup" };
 function lastOutcome(){ const h=STATE._history; return h.length? h[h.length-1].outcome : null; }
 
 function resolveSwing(club, angle, power){
-  STATE.shots++; // every swing counts
+  STATE.shots++;
 
-  // PUTTING (fixed): ball advances by hitFt, bigger tolerance; can handle >90ft with multiple putts
+  // Putting
   if(club.kind==="putt" || STATE.onGreen){
     STATE.onGreen=true;
-    const target = Math.max(1, STATE.distFt);      // no cap
+    const target = Math.max(1, STATE.distFt);
     const hitFt = clamp(Math.round(power*club.max), 0, club.max);
     let tol = target<=6?4 : target<=12?3.5 : target<=20?3 : target<=40?2.5 : 2;
-
     if(Math.abs(hitFt - target) <= tol){
       STATE.distFt=0; pushPathToCup(); pushHistory(OUT.CUP, club.name); SFX.cup.play(); return finishRound();
     } else {
@@ -494,7 +397,7 @@ function resolveSwing(club, angle, power){
     }
   }
 
-  // FULL SHOT
+  // Full shot
   let lie=1; const prev=lastOutcome();
   if(prev===OUT.TREES) lie=0.5;
   else if(prev===OUT.ROUGH_L||prev===OUT.ROUGH_R||prev===OUT.SAND) lie=0.9;
@@ -507,17 +410,22 @@ function resolveSwing(club, angle, power){
   const lateral = angle - 0.5;
   let outcome = OUT.FAIRWAY;
 
-  // Hazard start distances (from tee): trees ~300y, water ~230y
-  // Convert to remaining-to-hole thresholds:
-  const TREES_ACTIVE = before >= (409-300); // >=109 yds remaining
-  const WATER_ACTIVE = before >= (409-230); // >=179 yds remaining
+  // Hazards thresholds from tee:
+  // Trees active once remaining >= 409-300 = 109y; Water active once remaining >= 409-200 = 209y
+  const TREES_ACTIVE = before >= 109;
+  const WATER_ACTIVE = before >= 209;
 
   if(TREES_ACTIVE && (angle < club.anglePenalty) && lateral<0){ outcome = OUT.TREES; }
   if(WATER_ACTIVE && (angle > 1 - club.anglePenalty) && lateral>0){ outcome = OUT.WATER; }
 
-  // Near green classification
+  // Fairway bunker logic (~350y from tee => ~59y remaining). Catch shots that finish near 40–80y and aimed left-ish.
+  if(outcome===OUT.FAIRWAY && after<=80 && after>=40 && lateral < -0.08){
+    outcome = OUT.SAND;
+  }
+
+  // Near green classification if still fairway
   if(after<=60 && outcome===OUT.FAIRWAY){
-    if(lateral<-0.10) outcome=OUT.SAND;                      // short-left sand by spec
+    if(lateral<-0.10) outcome=OUT.SAND;             // short-left sand
     else if(Math.abs(lateral)<=0.18) outcome=OUT.GREEN;
     else outcome=(lateral<0)? OUT.ROUGH_L : OUT.ROUGH_R;
   } else if(outcome===OUT.FAIRWAY){
@@ -527,7 +435,7 @@ function resolveSwing(club, angle, power){
 
   if(outcome===OUT.WATER){
     STATE.penalties++; showToast(choice(COMMENTARY.water)); SFX.splash.play();
-    outcome=OUT.ROUGH_R; // drop to right rough
+    outcome=OUT.ROUGH_R; // drop right rough
   }
 
   if(outcome===OUT.GREEN){
@@ -550,7 +458,7 @@ function resolveSwing(club, angle, power){
   sceneClubSelect();
 }
 
-/* ========== Path & History ========== */
+/* ===== Path & History ===== */
 function pushPathByCarry(progress,lateral){
   const last=STATE.path[STATE.path.length-1];
   const newX = clamp(last.x + progress*0.82, 0.04, 0.97);
@@ -565,22 +473,12 @@ function pushPathTowardHole(frac){
 function pushPathToCup(){ STATE.path.push({x:0.97,y:0.56}); }
 function pushHistory(outcome,club){ STATE._history.push({outcome,club,shots:STATE.shots,pen:STATE.penalties,onGreen:STATE.onGreen,distYds:STATE.distYds,distFt:STATE.distFt}); }
 
-/* ========== Finish & Pick-up ========== */
-function finishRound(){
-  const strokes=STATE.shots+STATE.penalties;
-  finishScreen(strokes, null);
-}
-function finishPickup(){
-  const par=4, minScore=par+2;
-  STATE.pickedUp=true;
-  const strokes=Math.max(STATE.shots+STATE.penalties, minScore);
-  finishScreen(strokes, "Picked up");
-}
+/* ===== Finish & Pick-up ===== */
+function finishRound(){ const strokes=STATE.shots+STATE.penalties; finishScreen(strokes, null); }
+function finishPickup(){ const par=4, minScore=par+2; STATE.pickedUp=true; const strokes=Math.max(STATE.shots+STATE.penalties, minScore); finishScreen(strokes, "Picked up"); }
 function finishScreen(strokes, tag){
-  STATE.finished=true;
-  const par=4, diff=strokes-par;
+  STATE.finished=true; const par=4, diff=strokes-par;
   const label = tag?tag:(diff<=-2?"Eagle":diff===-1?"Birdie":diff===0?"Par":diff===1?"Bogey":"+ "+diff);
-
   scene.innerHTML=`
     <div class="card stack" style="padding:22px;max-width:900px">
       <div class="badge">Final</div>
@@ -603,7 +501,7 @@ function finishScreen(strokes, tag){
   $("#save").onclick=()=>{ const i=($("#init").value||"__").toUpperCase().replace(/[^A-Z]/g,"").slice(0,3).padEnd(3,"_"); saveLB(i,strokes, tag||""); $("#msg").textContent="Saved."; };
 }
 
-/* ========== Boot ========== */
+/* ===== Boot ===== */
 sceneTitle();
 </script>
 </body>
