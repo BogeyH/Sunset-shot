@@ -4,11 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Bogey Hound – The Walk In</title>
-
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
-
 <style>
 :root{
   --navy:#0B1F2A; --cream:#FDF0D5; --red:#C1121F;
@@ -37,18 +35,17 @@ button.ghost{background:transparent;border:1px dashed rgba(255,255,255,.35);colo
 .hud{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 
 /* Minimap */
-.mini{width:min(940px,96vw);height:200px;border-radius:16px;background:#0e2a26;border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden}
+.mini{width:min(960px,96vw);height:200px;border-radius:16px;background:#0e2a26;border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden}
 .mini canvas{width:100%;height:100%}
 
 /* Meters */
-.meters{display:grid;gap:12px;width:min(940px,96vw)}
+.meters{display:grid;gap:12px;width:min(960px,96vw)}
 .meter{height:160px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden}
 .meter canvas{width:100%;height:100%}
-.meter .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;pointer-events:none}
-.key{display:flex;gap:8px;align-items:center}
-.dot{width:10px;height:10px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.35)}
+.meter .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.readout{font:800 28px "Space Grotesk";background:rgba(0,0,0,.35);padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18)}
 
-/* Floating always-visible Pick Up */
+/* Always-visible Pick Up */
 #pickupFloating{
   position:fixed; left:12px; bottom:12px; z-index:50;
   padding:10px 14px; border-radius:12px; background:rgba(0,0,0,.4);
@@ -71,7 +68,7 @@ button.ghost{background:transparent;border:1px dashed rgba(255,255,255,.35);colo
 <div id="toast" class="toast hidden"></div>
 
 <script>
-/* ========== Audio stubs (swap files later) ========== */
+/* ========== Audio stubs ========== */
 const SFX = {
   hit: new Howl({src:[],volume:.5}),
   splash: new Howl({src:[],volume:.5}),
@@ -95,16 +92,16 @@ const STATE={
 };
 
 const CLUBS={
-  // Safe = wider perfect windows + slower meters
+  // Slower overall; safe clubs much easier (wider perfect, slower meters)
   driver:    {id:"driver",name:"The Big Dog",kind:"aggr",max:260,perf:0.10,anglePenalty:0.20,spdA:0.010,spdP:0.010,copy:"Let it fly."},
-  drivingIr: {id:"drivingIr",name:"The Fairway Finder",kind:"safe",max:210,perf:0.28,anglePenalty:0.01,spdA:0.006,spdP:0.006,copy:"Short grass energy."},
+  drivingIr: {id:"drivingIr",name:"The Fairway Finder",kind:"safe",max:210,perf:0.30,anglePenalty:0.01,spdA:0.006,spdP:0.006,copy:"Short grass energy."},
   wood3:     {id:"wood3",name:"The Long Shot",kind:"aggr",max:235,perf:0.12,anglePenalty:0.18,spdA:0.009,spdP:0.009,copy:"Get it dancing."},
-  iron5:     {id:"iron5",name:"The Layup",kind:"safe",max:190,perf:0.30,anglePenalty:0.01,spdA:0.006,spdP:0.006,copy:"Smart is sexy."},
+  iron5:     {id:"iron5",name:"The Layup",kind:"safe",max:190,perf:0.32,anglePenalty:0.01,spdA:0.006,spdP:0.006,copy:"Smart is sexy."},
   iron6:     {id:"iron6",name:"The Nudge",kind:"aggr",max:170,perf:0.14,anglePenalty:0.16,spdA:0.008,spdP:0.008,copy:"Thread it."},
-  iron8:     {id:"iron8",name:"The Cozy One",kind:"safe",max:135,perf:0.32,anglePenalty:0.01,spdA:0.005,spdP:0.005,copy:"Pin-high vibes."},
+  iron8:     {id:"iron8",name:"The Cozy One",kind:"safe",max:135,perf:0.34,anglePenalty:0.01,spdA:0.005,spdP:0.005,copy:"Pin-high vibes."},
   pw:        {id:"pw",name:"The Flighted Wedge",kind:"aggr",max:115,perf:0.16,anglePenalty:0.14,spdA:0.008,spdP:0.007,copy:"Send it soft."},
-  lw60:      {id:"lw60",name:"The Float",kind:"safe",max:90,perf:0.34,anglePenalty:0.01,spdA:0.005,spdP:0.005,copy:"Up. Down. Close."},
-  putter:    {id:"putter",name:"Putter",kind:"putt",max:60,perf:0.50,anglePenalty:0,spdA:0,spdP:0.004,copy:"Walk it in."}
+  lw60:      {id:"lw60",name:"The Float",kind:"safe",max:90,perf:0.36,anglePenalty:0.01,spdA:0.005,spdP:0.005,copy:"Up. Down. Close."},
+  putter:    {id:"putter",name:"Putter",kind:"putt",max:90,perf:0.55,anglePenalty:0,spdA:0,spdP:0.004,copy:"Walk it in."} // 90ft reach
 };
 
 const COMMENTARY={
@@ -132,7 +129,7 @@ function sceneTitle(){
     <div class="card stack" style="padding:22px;max-width:900px">
       <div class="badge">Bogey Hound · 18th · 409 yds</div>
       <h1>The sun is down,<br/>the vibes are up.<br/>Let’s walk it in.</h1>
-      <p class="small">Power first. Angle second. Then enjoy the walk.</p>
+      <p class="small">Power first. Angle second. Auto-hit. Pick up anytime.</p>
       <div class="row">
         <button id="start">Start</button>
         <button class="secondary" id="lb">Leaderboard</button>
@@ -141,7 +138,7 @@ function sceneTitle(){
   $("#start").onclick=()=>{ resetState(); sceneClubSelect(); };
   $("#lb").onclick=sceneLeaderboard;
 }
-const LB_KEY="bh_walkin_lb_v4";
+const LB_KEY="bh_walkin_lb_v5";
 function loadLB(){ try{return JSON.parse(localStorage.getItem(LB_KEY)||"[]")}catch(e){return[]} }
 function saveLB(i,s,tag){ const lb=loadLB(); lb.push({i,s,tag,t:Date.now()}); lb.sort((a,b)=>a.s-b.s||a.t-b.t); localStorage.setItem(LB_KEY,JSON.stringify(lb.slice(0,10))); }
 function sceneLeaderboard(){
@@ -169,43 +166,48 @@ function drawMini(canvas, zoomGreen=false){
   // base
   ctx.fillStyle="#0e2a26"; ctx.fillRect(0,0,bb.width,bb.height);
 
-  // Rough area left/right (wide strip)
+  // Rough wide strip
   ctx.fillStyle=getCSS('--rough');
   roundRect(ctx, bb.width*0.02, bb.height*0.34, bb.width*0.96, bb.height*0.44, 28, true);
 
-  // Fairway inside rough
+  // Fairway
   ctx.fillStyle=getCSS('--fair');
   roundRect(ctx, bb.width*0.06, bb.height*0.40, bb.width*0.88, bb.height*0.32, 26, true);
 
-  // Pine trees lining TOP of fairway on the LEFT side
-  const leftTopY = bb.height*0.40;
-  const leftXStart = bb.width*0.06;
+  // Pines along LEFT/top edge for first ~300y from tee (300/409 ≈ 0.73 of width from tee)
+  const pEndX = bb.width*(0.06 + 0.88*0.73);
+  const topY = bb.height*0.40;
   ctx.fillStyle=getCSS('--tree');
-  for(let x=leftXStart; x<bb.width*0.28; x+=18){
-    drawPine(ctx, x, leftTopY-6, 14, 22);
-  }
+  for(let x=bb.width*0.06; x<pEndX; x+=18){ drawPine(ctx, x, topY-6, 14, 22); }
 
-  // Water lining BOTTOM of fairway on the RIGHT side (long lagoon)
+  // Water ribbon along RIGHT/bottom of fairway starting earlier (~230y from tee => 230/409 ≈ 0.56 of width)
+  const wStartX = bb.width*(0.06 + 0.88*0.56);
   ctx.fillStyle=getCSS('--water');
   ctx.beginPath();
-  ctx.moveTo(bb.width*0.55, bb.height*0.72);
-  ctx.quadraticCurveTo(bb.width*0.72, bb.height*0.84, bb.width*0.98, bb.height*0.80);
+  ctx.moveTo(wStartX, bb.height*0.72);
+  ctx.quadraticCurveTo(bb.width*0.80, bb.height*0.86, bb.width*0.98, bb.height*0.82);
   ctx.lineTo(bb.width*0.98, bb.height*0.96);
-  ctx.lineTo(bb.width*0.55, bb.height*0.96);
+  ctx.lineTo(wStartX, bb.height*0.96);
   ctx.closePath(); ctx.fill();
 
-  // Sand LEFT of the green (short)
+  // Bunker mid-left fairway at ~350y from tee (350/409 ≈ 0.86 toward hole)
+  const bx = bb.width*(0.06 + 0.88*(350/409));
+  const by = bb.height*0.48; // mid-left
+  ctx.fillStyle=getCSS('--sand');
+  ctx.beginPath(); ctx.ellipse(bx, by, bb.width*0.035, bb.height*0.04, 0, 0, Math.PI*2); ctx.fill();
+
+  // Sand short-left of green
   const greenCx = bb.width*0.90, greenCy = bb.height*0.56, greenRx = bb.width*0.08, greenRy = bb.height*0.06;
   ctx.fillStyle=getCSS('--sand');
   ctx.beginPath();
   ctx.ellipse(greenCx - greenRx*0.60, greenCy+greenRy*0.10, greenRx*0.38, greenRy*0.26, 0, 0, Math.PI*2);
   ctx.fill();
 
-  // Green (nothing but the flag)
+  // Green (no features except flag)
   ctx.fillStyle="#2f7a63";
   ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
 
-  // Cup/flag
+  // Flag/cup
   const holeX = greenCx+greenRx*0.28, holeY = greenCy;
   ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
   ctx.fillStyle=getCSS('--red'); ctx.beginPath(); ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
@@ -213,21 +215,18 @@ function drawMini(canvas, zoomGreen=false){
   // Trace path
   const pts = STATE.path.map(p=>({x:lerp(0,bb.width,p.x), y:lerp(0,bb.height,p.y)}));
 
-  // Zoom green view for putting
+  // Zoom green view when putting
   if(zoomGreen || STATE.onGreen){
     const pad=12, gx=greenCx-greenRx-pad, gy=greenCy-greenRy-pad, gw=greenRx*2+pad*2, gh=greenRy*2+pad*2;
     ctx.save(); ctx.clearRect(0,0,bb.width,bb.height); ctx.fillStyle="#0e2a26"; ctx.fillRect(0,0,bb.width,bb.height);
     const sx=bb.width/gw, sy=bb.height/gh, s=Math.min(sx,sy);
     ctx.translate(-gx*s,-gy*s); ctx.scale(s,s);
 
-    // re-draw green
-    ctx.fillStyle="#2f7a63";
-    ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
-    // cup/flag
+    // Green only
+    ctx.fillStyle="#2f7a63"; ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle="#fff"; ctx.lineWidth=2/s; ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
     ctx.fillStyle=getCSS('--red'); ctx.beginPath(); ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
 
-    // trace
     ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=2/s; ctx.beginPath();
     pts.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
     const last=pts[pts.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4/s,0,Math.PI*2); ctx.fill();
@@ -239,21 +238,12 @@ function drawMini(canvas, zoomGreen=false){
   pts.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
   const last=pts[pts.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4,0,Math.PI*2); ctx.fill();
 }
-
 function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v); }
 function roundRect(ctx,x,y,w,h,r,fill=true){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); fill?ctx.fill():ctx.stroke(); }
 function drawPine(ctx,cx,baseY,w,h){
   ctx.fillStyle=getCSS('--tree');
-  ctx.beginPath();
-  ctx.moveTo(cx, baseY-h);
-  ctx.lineTo(cx-w*0.6, baseY-h*0.55);
-  ctx.lineTo(cx+w*0.6, baseY-h*0.55);
-  ctx.closePath(); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx, baseY-h*0.55);
-  ctx.lineTo(cx-w*0.8, baseY-h*0.15);
-  ctx.lineTo(cx+w*0.8, baseY-h*0.15);
-  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx, baseY-h); ctx.lineTo(cx-w*0.6, baseY-h*0.55); ctx.lineTo(cx+w*0.6, baseY-h*0.55); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx, baseY-h*0.55); ctx.lineTo(cx-w*0.8, baseY-h*0.15); ctx.lineTo(cx+w*0.8, baseY-h*0.15); ctx.closePath(); ctx.fill();
   ctx.fillRect(cx-2, baseY-h*0.15, 4, h*0.15);
 }
 
@@ -271,13 +261,12 @@ function sceneClubSelect(){
   scene.innerHTML="";
   const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="960px";
 
-  // Minimap
   const mini=document.createElement("div"); mini.className="mini"; mini.innerHTML=`<canvas id="mini"></canvas>`;
   wrap.appendChild(mini); scene.appendChild(wrap);
   drawMini($("#mini"), STATE.onGreen);
 
-  const card=document.createElement("div"); card.className="card stack"; card.style.padding="18px";
   const distLabel = STATE.onGreen ? `${Math.round(STATE.distFt)} ft` : `${Math.round(STATE.distYds)} yds`;
+  const card=document.createElement("div"); card.className="card stack"; card.style.padding="18px";
   card.innerHTML=`
     <div class="hud">
       <div class="pill">${STATE.onGreen?"Putt":"Pick your pace"}</div>
@@ -285,7 +274,7 @@ function sceneClubSelect(){
       <div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>
     </div>
     <div class="row" id="clubRow"></div>
-    <div class="small">Hint: You’ll pick <strong>Power</strong> first, then <strong>Angle</strong>. Click the meter or use the buttons.</div>
+    <div class="small">Tip: Power, then angle. Click the meter or press Space/Enter to lock.</div>
   `;
   wrap.appendChild(card);
 
@@ -303,7 +292,7 @@ function sceneClubSelect(){
   });
 }
 
-/* ========== Swing: POWER → then ANGLE ========== */
+/* ========== Swing: POWER → ANGLE (auto-hit) ========== */
 function sceneSwingPowerFirst(key, club){
   scene.innerHTML="";
   const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="960px";
@@ -314,15 +303,12 @@ function sceneSwingPowerFirst(key, club){
 
   const distLabel = STATE.onGreen ? `${Math.round(STATE.distFt)} ft` : `${Math.round(STATE.distYds)} yds`;
   const header=document.createElement("div"); header.className="hud";
-  header.innerHTML=`<div class="pill">1/2 – Select POWER · ${club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
+  header.innerHTML=`<div class="pill">1/2 – POWER · ${club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
   wrap.appendChild(header);
 
-  // POWER meter with clear buttons
+  // POWER meter (animation + ideal band + numeric only)
   const box=document.createElement("div"); box.className="meter";
-  box.innerHTML=`
-    <canvas id="power"></canvas>
-    <div class="overlay"><div class="key"><span class="dot"></span><span id="powLabel">0</span></div><div class="key"><span class="dot" style="background:var(--red)"></span><span>Ideal zone</span></div></div>
-  `;
+  box.innerHTML=`<canvas id="power"></canvas><div class="overlay"><div class="readout" id="powLabel">0</div></div>`;
   wrap.appendChild(box);
 
   const ctrls=document.createElement("div"); ctrls.className="row";
@@ -336,22 +322,22 @@ function sceneSwingPowerFirst(key, club){
   const ctx=fit(pCVS);
 
   let cursorP=0, dirP=1, raf, paused=false;
-  const spdP=club.spdP; const unit=STATE.onGreen?"ft":"yds";
+  const spdP=club.spdP;
 
   function requiredPower(){
     if(STATE.onGreen){
-      const targetFt = clamp(STATE.distFt, 2, club.max);
-      return clamp(targetFt/club.max, 0, 1);
+      const ft = Math.max(1, STATE.distFt);
+      return Math.min(1, ft/club.max);
     } else {
       let lie=1; const prev = lastOutcome();
       if(prev==="trees") lie=0.5;
       else if(prev==="roughL"||prev==="roughR"||prev==="sand") lie=0.9;
-      const needed = clamp(STATE.distYds, 1, club.max*1.05);
+      const needed = Math.max(1, STATE.distYds);
       const effMax = club.max*lie;
-      return clamp(needed/Math.max(1,effMax), 0, 1);
+      return Math.min(1, needed/Math.max(1,effMax));
     }
   }
-  function idealBandWidth(){ return STATE.onGreen ? (STATE.distFt<=8?0.48:STATE.distFt<=15?0.36:STATE.distFt<=30?0.28:0.22) : (club.kind==="safe"?0.32:0.18); }
+  function idealBandWidth(){ return STATE.onGreen ? (STATE.distFt<=8?0.50:STATE.distFt<=15?0.38:STATE.distFt<=30?0.30:0.24) : (club.kind==="safe"?0.34:0.18); }
 
   function drawPower(){
     const bb=pCVS.getBoundingClientRect();
@@ -362,17 +348,7 @@ function sceneSwingPowerFirst(key, club){
     ctx.fillStyle="rgba(255,255,255,.09)";
     ctx.fillRect(bb.width*.08, bb.height*.12, bb.width*.84, bb.height*.76);
 
-    // ticks + labels (big)
-    ctx.fillStyle="rgba(255,255,255,.55)";
-    ctx.textAlign="right"; ctx.font="700 22px 'Space Grotesk'";
-    const maxMark=club.max;
-    for(let i=0;i<=6;i++){
-      const y=bb.height*.88 - (bb.height*.76)*(i/6);
-      ctx.fillRect(bb.width*.08, y, bb.width*.84, 2);
-      ctx.fillText(Math.round(maxMark*i/6)+" "+unit, bb.width*.075, y+8);
-    }
-
-    // ideal band
+    // dynamic ideal band
     const ideal=requiredPower(), band=idealBandWidth();
     const ph=bb.height*.76*band;
     const cyIdeal=bb.height*.88 - (bb.height*.76)*ideal;
@@ -380,11 +356,13 @@ function sceneSwingPowerFirst(key, club){
     ctx.fillStyle="rgba(212,61,61,.32)";
     ctx.fillRect(bb.width*.08, py, bb.width*.84, ph);
 
-    // cursor (animated)
+    // cursor
     const cy = bb.height*.88 - cursorP*(bb.height*.76);
     ctx.fillStyle="#fff"; ctx.fillRect(bb.width*.50-10, cy-10, 20, 20);
 
-    // readout
+    // numeric readout only
+    const unit = STATE.onGreen? "ft" : "yds";
+    const maxMark = club.max*(STATE.onGreen?1:1);
     const current = Math.round(maxMark*cursorP);
     $("#powLabel").textContent = current+" "+unit;
   }
@@ -399,7 +377,6 @@ function sceneSwingPowerFirst(key, club){
   }
   tick();
 
-  // intuitive inputs
   pCVS.addEventListener("click", ()=> lockPower(cursorP));
   $("#lockP").onclick=()=>lockPower(cursorP);
   $("#toggleP").onclick=()=>{ paused=!paused; $("#toggleP").textContent=paused?"Resume":"Pause"; };
@@ -411,7 +388,6 @@ function sceneSwingPowerFirst(key, club){
   }
 }
 
-/* ANGLE second */
 function sceneSwingAngleSecond(key, club, powerVal){
   scene.innerHTML="";
   const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="960px";
@@ -422,22 +398,18 @@ function sceneSwingAngleSecond(key, club, powerVal){
 
   const distLabel = STATE.onGreen ? `${Math.round(STATE.distFt)} ft` : `${Math.round(STATE.distYds)} yds`;
   const header=document.createElement("div"); header.className="hud";
-  header.innerHTML=`<div class="pill">2/2 – Select ANGLE · ${club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
+  header.innerHTML=`<div class="pill">2/2 – ANGLE · ${club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
   wrap.appendChild(header);
 
   const box=document.createElement("div"); box.className="meter";
-  box.innerHTML=`
-    <canvas id="angle"></canvas>
-    <div class="overlay"><div class="key"><span class="dot" style="background:var(--red)"></span><span>Perfect zone</span></div><div class="key"><span class="dot" style="background:#bbb"></span><span>Hazard edges</span></div></div>
-  `;
+  box.innerHTML=`<canvas id="angle"></canvas>`;
   wrap.appendChild(box);
 
   const ctrls=document.createElement("div"); ctrls.className="row";
-  ctrls.innerHTML=`<button class="secondary" id="back">Back</button><button id="toggleA">Pause</button><button id="lockA" class="danger">Lock Angle</button><button id="hit" class="danger">Hit Shot</button>`;
-  wrap.appendChild(ctrls);
+  ctrls.innerHTML=`<button class="secondary" id="back">Back</button><button id="toggleA">Pause</button><button id="lockA" class="danger">Lock Angle</button>`;
+  wrap.appendChild(ctrlls);
 
   $("#back").onclick=sceneClubSelect;
-  $("#hit").disabled=true;
 
   const aCVS=$("#angle"); const dpr=Math.max(1,Math.floor(window.devicePixelRatio||1));
   const fit=cv=>{ const bb=cv.getBoundingClientRect(); cv.width=Math.floor(bb.width*dpr); cv.height=Math.floor(bb.height*dpr); return cv.getContext("2d"); }
@@ -490,31 +462,30 @@ function sceneSwingAngleSecond(key, club, powerVal){
 
   function lockAngle(val){
     cancelAnimationFrame(raf);
-    $("#hit").disabled=false;
-    $("#hit").onclick=()=>resolveSwing(club, clamp(val,0,1), powerVal);
+    // AUTO-HIT right away (no extra button)
+    resolveSwing(club, clamp(val,0,1), powerVal);
   }
 }
 
-/* ========== Outcome logic & scoring ========== */
+/* ========== Outcome logic ========== */
 const OUT={ TREES:"trees", ROUGH_L:"roughL", FAIRWAY:"fairway", ROUGH_R:"roughR", WATER:"water", SAND:"sand", GREEN:"green", CUP:"cup" };
 function lastOutcome(){ const h=STATE._history; return h.length? h[h.length-1].outcome : null; }
 
 function resolveSwing(club, angle, power){
-  // every swing counts once
-  STATE.shots++;
+  STATE.shots++; // every swing counts
 
-  // Putting (fixed advance)
+  // PUTTING (fixed): ball advances by hitFt, bigger tolerance; can handle >90ft with multiple putts
   if(club.kind==="putt" || STATE.onGreen){
     STATE.onGreen=true;
-    const target = clamp(STATE.distFt, 1, club.max);
+    const target = Math.max(1, STATE.distFt);      // no cap
     const hitFt = clamp(Math.round(power*club.max), 0, club.max);
-
     let tol = target<=6?4 : target<=12?3.5 : target<=20?3 : target<=40?2.5 : 2;
+
     if(Math.abs(hitFt - target) <= tol){
       STATE.distFt=0; pushPathToCup(); pushHistory(OUT.CUP, club.name); SFX.cup.play(); return finishRound();
     } else {
-      const remaining = Math.max(1, Math.abs(target - hitFt));
-      const frac = clamp(hitFt/target, 0, 0.98);
+      const remaining = Math.max(1, target - hitFt);
+      const frac = Math.min(0.98, hitFt/target);
       pushPathTowardHole(frac);
       STATE.distFt = remaining;
       pushHistory(OUT.GREEN, club.name);
@@ -523,7 +494,7 @@ function resolveSwing(club, angle, power){
     }
   }
 
-  // Full shot
+  // FULL SHOT
   let lie=1; const prev=lastOutcome();
   if(prev===OUT.TREES) lie=0.5;
   else if(prev===OUT.ROUGH_L||prev===OUT.ROUGH_R||prev===OUT.SAND) lie=0.9;
@@ -536,25 +507,27 @@ function resolveSwing(club, angle, power){
   const lateral = angle - 0.5;
   let outcome = OUT.FAIRWAY;
 
-  // Hazards: trees left, water right. Rough both sides baked into spreads.
-  if(before>100){
-    const pen=(angle < club.anglePenalty) || (angle > 1 - club.anglePenalty);
-    if(pen) outcome = lateral>0 ? OUT.WATER : OUT.TREES;
-  }
+  // Hazard start distances (from tee): trees ~300y, water ~230y
+  // Convert to remaining-to-hole thresholds:
+  const TREES_ACTIVE = before >= (409-300); // >=109 yds remaining
+  const WATER_ACTIVE = before >= (409-230); // >=179 yds remaining
+
+  if(TREES_ACTIVE && (angle < club.anglePenalty) && lateral<0){ outcome = OUT.TREES; }
+  if(WATER_ACTIVE && (angle > 1 - club.anglePenalty) && lateral>0){ outcome = OUT.WATER; }
 
   // Near green classification
   if(after<=60 && outcome===OUT.FAIRWAY){
-    if(lateral>0.22) outcome=OUT.SAND;             // short-right sand? Spec wants sand left of green (short). We'll use left-of-green earlier in minimap; keep gameplay forgiving: use right-lateral => sand
+    if(lateral<-0.10) outcome=OUT.SAND;                      // short-left sand by spec
     else if(Math.abs(lateral)<=0.18) outcome=OUT.GREEN;
-    else outcome=(lateral<0)?OUT.ROUGH_L:OUT.ROUGH_R;
+    else outcome=(lateral<0)? OUT.ROUGH_L : OUT.ROUGH_R;
   } else if(outcome===OUT.FAIRWAY){
     if(Math.abs(lateral)<=0.18) outcome=OUT.FAIRWAY;
-    else outcome=(lateral<0)?OUT.ROUGH_L:OUT.ROUGH_R;
+    else outcome=(lateral<0)? OUT.ROUGH_L : OUT.ROUGH_R;
   }
 
   if(outcome===OUT.WATER){
     STATE.penalties++; showToast(choice(COMMENTARY.water)); SFX.splash.play();
-    outcome=OUT.ROUGH_R;
+    outcome=OUT.ROUGH_R; // drop to right rough
   }
 
   if(outcome===OUT.GREEN){
@@ -598,7 +571,6 @@ function finishRound(){
   finishScreen(strokes, null);
 }
 function finishPickup(){
-  // always-visible pickup action
   const par=4, minScore=par+2;
   STATE.pickedUp=true;
   const strokes=Math.max(STATE.shots+STATE.penalties, minScore);
