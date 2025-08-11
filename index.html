@@ -5,653 +5,658 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Bogey Hound – The Walk In</title>
 
-<!-- Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
-
-<!-- GSAP + Howler -->
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
 
 <style>
-:root{
-  --navy:#0B1F2A; --cream:#FDF0D5; --red:#C1121F; --burg:#780000;
-  --sky:#669BBC; --white:#FFFFFF; --slate:#6D8196; --gray:#4A4A4A;
-}
+:root{ --navy:#0B1F2A; --cream:#FDF0D5; --red:#C1121F; --burg:#780000; --sky:#669BBC; --white:#FFFFFF; --slate:#6D8196; --gray:#4A4A4A; }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--navy);color:var(--cream);font-family:"Space Grotesk",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-button{font:600 16px "Space Grotesk";padding:14px 18px;border-radius:16px;border:0;cursor:pointer;background:var(--cream);color:var(--navy);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+h1,h2{font-family:"Libre Baskerville",serif;margin:0}
+button{font:600 16px "Space Grotesk";padding:12px 16px;border-radius:14px;border:0;background:var(--cream);color:var(--navy);cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 button.secondary{background:transparent;color:var(--cream);border:2px solid rgba(253,240,213,.5)}
-button:active{transform:translateY(1px)}
-h1,h2,h3{font-family:"Libre Baskerville",serif;margin:0}
-h1{font-size:clamp(28px,6vw,44px);line-height:1.05}
-h2{font-size:clamp(20px,4.2vw,28px);opacity:.9}
-.small{font-size:12px;opacity:.7}
-a{color:var(--cream)}
-.hidden{display:none}
-#app{min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
-.header,.footer{padding:14px 16px}
-.header{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,0))}
+.small{opacity:.75;font-size:12px}
+.badge{display:inline-flex;gap:8px;align-items:center;font-weight:600;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}
+.card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(6px);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:14px}
+.center{display:grid;place-items:center;padding:16px}
+.header,.footer{padding:12px 16px}
 .brand{display:flex;gap:10px;align-items:center}
 .brand .icon{width:36px;height:36px;border-radius:10px;background:var(--cream);display:grid;place-items:center;color:var(--navy);font-weight:800}
-.card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(6px);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
-.center{display:grid;place-items:center;padding:16px}
-.stack{display:flex;flex-direction:column;gap:16px}
-.row{display:flex;gap:12px;flex-wrap:wrap}
-.grid2{display:grid;grid-template-columns:1fr;gap:14px}
-@media(min-width:720px){.grid2{grid-template-columns:1fr 1fr}}
-.badge{display:inline-flex;gap:8px;align-items:center;font-weight:600;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}
-.meterWrap{position:relative;width:min(640px,94vw);height:160px}
-.meter{position:absolute;inset:0;padding:14px}
-.meter canvas{width:100%;height:100%;border-radius:16px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.18)}
-.hud{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.pill{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font-weight:600}
-.big{font-size:18px}
-.scene{position:relative;overflow:hidden}
-.backdrop{position:absolute;inset:0;z-index:-1}
-.sunset{position:absolute;inset:0;
-  background:
-   radial-gradient(1000px 420px at 70% 30%, rgba(255,183,77,.35), rgba(255,183,77,0) 70%),
-   linear-gradient(180deg, #ffb385 0%, #f28e8e 40%, #8b5fbf 75%, #0b1f2a 100%);
-}
-.fairway{position:absolute;left:0;right:0;bottom:-10%;height:70%;
-  background:
-   radial-gradient(120% 100% at 50% 120%, rgba(0,0,0,.3), transparent 55%),
-   linear-gradient(180deg, #315949 0%, #1f3d34 60%, #17342d 100%);
-  clip-path:ellipse(90% 70% at 50% 100%);
-}
-.water{position:absolute;right:-20%;top:40%;width:70%;height:40%;background:linear-gradient(180deg,#2e6d93,#244f6b);border-radius:40% 50% 0 0}
-.beach{position:absolute;right:-18%;top:60%;width:70%;height:18%;background:#d1b692;border-radius:45% 55% 0 0;filter:brightness(1.05)}
-.trees{position:absolute;left:-8%;top:20%;bottom:12%;width:40%;background:repeating-linear-gradient(90deg,transparent 0 12px,rgba(18,42,35,.6) 12px 28px)}
-.bunker{position:absolute;right:18%;bottom:26%;width:18%;height:8%;background:#d8c3a5;border-radius:50%}
-.green{position:absolute;right:15%;bottom:20%;width:25%;height:12%;background:#3a6f57;border-radius:50%}
-.flag{position:absolute;right:25%;bottom:29%;width:0;height:0;border-left:10px solid var(--red);border-top:7px solid transparent;border-bottom:7px solid transparent}
-.ball{position:absolute;width:10px;height:10px;border-radius:50%;background:white;box-shadow:0 0 0 2px rgba(0,0,0,.15)}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 16px;border-radius:12px;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18)}
-.cta{display:flex;gap:10px;flex-wrap:wrap}
+.pill{padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font-weight:600}
 .hr{height:1px;border:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.24),transparent)}
+.hidden{display:none}
+.scene{min-height:70dvh;position:relative}
+.hud{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.meters{display:grid;gap:12px}
+.mini{width:min(820px,96vw);height:180px;border-radius:16px;background:#0e2a26;border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden}
+.mini canvas{width:100%;height:100%}
+.meter{width:min(820px,96vw);height:140px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden}
+.meter canvas{width:100%;height:100%}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 16px;border-radius:12px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18)}
 .leader{width:100%;border-collapse:collapse}
 .leader th,.leader td{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
 .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:6px 10px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14)}
 </style>
 </head>
 <body>
-<div id="app">
-  <div class="header">
-    <div class="brand">
-      <div class="icon">BH</div>
-      <div>
-        <div style="font-weight:800">Bogey Hound</div>
-        <div class="small">The Walk In</div>
-      </div>
-    </div>
-    <div class="badge"><span id="hud-shots">Shots: 0</span><span>•</span><span id="hud-dist">409 yds</span></div>
-  </div>
-
-  <main id="scene" class="scene center">
-    <!-- dynamic content goes here -->
-  </main>
-
-  <div class="footer">
-    <div class="small">Vibe-first golf. Cream + navy forever.</div>
-  </div>
+<div class="header">
+  <div class="brand"><div class="icon">BH</div><div><div style="font-weight:800">Bogey Hound</div><div class="small">The Walk In</div></div></div>
 </div>
 
-<!-- Toast -->
+<main id="scene" class="scene center"></main>
+
+<div class="footer"><div class="small">Built for the walk, not the leaderboard.</div></div>
 <div id="toast" class="toast hidden"></div>
 
 <script>
-/* ========= Audio (placeholder-safe) ========= */
+/* ============================
+   Tiny SFX stubs (swap later)
+   ============================ */
 const SFX = {
-  // Use tiny silent buffers if blocked; files can be swapped later
-  hit: new Howl({ src: [], volume: .5 }),
-  splash: new Howl({ src: [], volume: .5 }),
-  sand: new Howl({ src: [], volume: .5 }),
-  cup: new Howl({ src: [], volume: .6 }),
-  bg: new Howl({ src: [], loop:true, volume:.25 })
+  hit: new Howl({src:[],volume:.5}),
+  splash: new Howl({src:[],volume:.5}),
+  sand: new Howl({src:[],volume:.5}),
+  cup: new Howl({src:[],volume:.6})
 };
 
-/* ========= Utilities ========= */
-const $ = (sel,root=document)=>root.querySelector(sel);
-const $$ = (sel,root=document)=>[...root.querySelectorAll(sel)];
-const rnd = (a,b)=>Math.random()*(b-a)+a;
-const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
-const choice = arr => arr[Math.floor(Math.random()*arr.length)];
-const formatYds = d => (d>=100 ? Math.round(d) : Math.max(1,Math.round(d))).toString()+" yds";
+/* ============================
+   Helpers
+   ============================ */
+const $ = (s, r=document)=>r.querySelector(s);
+const choice = a => a[Math.floor(Math.random()*a.length)];
+const clamp = (v,min,max)=>Math.min(max,Math.max(min,v));
 
-const PROFANITY = ["ASS","FCK","FUC","CUM","DCK","TIT","PSS","CNT","NIG","KKK","GAY","SEX","PEN","PUS","COK","FUQ"];
-
-/* ========= Game State ========= */
+/* ============================
+   State
+   ============================ */
 const STATE = {
-  dist: 409,
+  distYds: 409,          // remaining distance in yards (tee to green). On green we flip to feet (distFt flag).
+  onGreen: false,
+  distFt: 0,
   shots: 0,
   penalties: 0,
-  history: [],
-  onGreen: false,
-  vibeTags: new Set(),
-  finished: false
+  path: [{x:0.05,y:0.72}],   // normalized points on minimap; start near tee
+  finished:false
 };
 
+// clubs
 const CLUBS = {
-  driver:     {name:"The Big Dog", kind:"aggr", max:260, anglePenalty:0.20, perf:0.08, speed:1.6, copy:"Let it fly. Direction optional."},
-  drivingIr:  {name:"The Fairway Finder", kind:"safe", max:210, anglePenalty:0.02, perf:0.16, speed:1.15, copy:"Sensible. Short grass energy."},
-  wood3:      {name:"The Long Shot", kind:"aggr", max:235, anglePenalty:0.20, perf:0.08, speed:1.45, copy:"Get it dancing."},
-  iron5:      {name:"The Layup", kind:"safe", max:190, anglePenalty:0.02, perf:0.16, speed:1.1, copy:"Smart is sexy."},
-  iron6:      {name:"The Nudge", kind:"aggr", max:170, anglePenalty:0.20, perf:0.08, speed:1.35, copy:"Thread the needle."},
-  iron8:      {name:"The Cozy One", kind:"safe", max:135, anglePenalty:0.02, perf:0.18, speed:1.0, copy:"Pin-high vibes."},
-  pw:         {name:"The Flighted Wedge", kind:"aggr", max:115, anglePenalty:0.20, perf:0.1, speed:1.0, copy:"Send it, softly."},
-  lw60:       {name:"The Float", kind:"safe", max:90,  anglePenalty:0.02, perf:0.2, speed:0.9, copy:"Up, down, close."},
-  putter:     {name:"Putter", kind:"putt", max:60, anglePenalty:0, perf:0.35, speed:0.7, copy:"Walk it in."}
+  driver:    {id:'driver', name:"The Big Dog", kind:"aggr", max:260, perf:0.08, anglePenalty:0.20, speed:1.6, copy:"Let it fly."},
+  drivingIr: {id:'drivingIr',name:"The Fairway Finder", kind:"safe", max:210, perf:0.16, anglePenalty:0.02, speed:1.2, copy:"Short grass energy."},
+  wood3:     {id:'wood3',   name:"The Long Shot", kind:"aggr", max:235, perf:0.08, anglePenalty:0.20, speed:1.4, copy:"Get it dancing."},
+  iron5:     {id:'iron5',   name:"The Layup", kind:"safe", max:190, perf:0.16, anglePenalty:0.02, speed:1.1, copy:"Smart is sexy."},
+  iron6:     {id:'iron6',   name:"The Nudge", kind:"aggr", max:170, perf:0.10, anglePenalty:0.20, speed:1.3, copy:"Thread it."},
+  iron8:     {id:'iron8',   name:"The Cozy One", kind:"safe", max:135, perf:0.18, anglePenalty:0.02, speed:1.0, copy:"Pin-high vibes."},
+  pw:        {id:'pw',      name:"The Flighted Wedge", kind:"aggr", max:115, perf:0.12, anglePenalty:0.20, speed:1.0, copy:"Send it soft."},
+  lw60:      {id:'lw60',    name:"The Float", kind:"safe", max:90,  perf:0.20, anglePenalty:0.02, speed:0.9, copy:"Up. Down. Close."},
+  putter:    {id:'putter',  name:"Putter", kind:"putt", max:60,  perf:0.40, anglePenalty:0, speed:0.7, copy:"Walk it in."}
 };
 
 const COMMENTARY = {
-  fairway: ["Striped it down the middle.","Pure. A thing of beauty.","Center-cut glide.","Short grass appreciation club."],
-  rough:   ["Found the long stuff, but you can fluff that up.","Not bad—grass with ambition.","It’ll sit up just fine."],
-  trees:   ["In the pine straw. They’re 90% air, right?","Forest detour. Scenic route!"],
-  water:   ["Nice day for a swim.","Tide took that one.","Splash with style."],
-  sand:    ["Vacation vibes in the bunker.","A little beach time.","Sandy toes, steady pose."],
-  green:   ["On the dance floor.","Showtime. Two putts or better.","The walk just got quieter."],
-  cup:     ["Walked it in!","Dead center.","That sound never gets old."]
+  fairway:["Striped it.","Center-cut.","Right where the rollers live."],
+  rough:["Found the long stuff, still very playable.","Fluffy lie incoming.","Could be worse."],
+  trees:["Pine-cone collector.","90% air, 10% character building."],
+  water:["Nice day for a swim.","Splashy detour."],
+  sand:["Beach break.","Sandy toes, steady pose."],
+  green:["On the dance floor.","Showtime."],
+  cup:["Walked it in.","Dead center."]
 };
 
-const OUTCOMES = {
-  TREES:"trees", ROUGH_L:"roughL", FAIRWAY:"fairway", ROUGH_R:"roughR",
-  WATER:"water", SAND:"sand", GREEN:"green", CUP:"cup"
-};
-
-/* ========= DOM & Scene Helpers ========= */
+/* ============================
+   Scene: Title
+   ============================ */
 const scene = $("#scene");
 const toast = $("#toast");
-function showToast(text, ms=1800){
-  toast.textContent = text;
-  toast.classList.remove("hidden");
-  clearTimeout(showToast._t);
-  showToast._t=setTimeout(()=>toast.classList.add("hidden"), ms);
-}
-function setHUD(){
-  $("#hud-shots").textContent = `Shots: ${STATE.shots + (STATE.finished?0:0)}`;
-  $("#hud-dist").textContent = STATE.onGreen? `${Math.round(STATE.dist)} ft` : `${Math.round(STATE.dist)} yds`;
-}
+function showToast(txt,ms=1500){ toast.textContent=txt; toast.classList.remove("hidden"); clearTimeout(showToast._t); showToast._t=setTimeout(()=>toast.classList.add("hidden"),ms); }
+
 function resetState(){
-  STATE.dist=409; STATE.shots=0; STATE.penalties=0; STATE.history=[];
-  STATE.onGreen=false; STATE.vibeTags.clear(); STATE.finished=false;
-  setHUD();
+  STATE.distYds = 409; STATE.onGreen=false; STATE.distFt=0;
+  STATE.shots=0; STATE.penalties=0; STATE.finished=false;
+  STATE.path=[{x:0.05,y:0.72}];
 }
 
-/* ========= Backdrop (course) ========= */
-function drawBackdrop(root){
-  root.innerHTML = `
-    <div class="backdrop">
-      <div class="sunset"></div>
-      <div class="water"></div>
-      <div class="beach"></div>
-      <div class="trees"></div>
-      <div class="fairway"></div>
-      <div class="bunker"></div>
-      <div class="green"></div>
-      <div class="flag"></div>
-    </div>`;
-}
-
-/* ========= Scenes ========= */
 function sceneTitle(){
-  scene.innerHTML = "";
-  drawBackdrop(scene);
-  const wrap = document.createElement("div");
-  wrap.className="center";
-  wrap.innerHTML = `
-    <div class="card stack" style="padding:24px;max-width:860px">
-      <div class="row">
-        <div class="badge">Bogey Hound · 18th Hole · 409 yds</div>
-      </div>
-      <h1>The sun is down,<br/>the vibes are up,<br/>let’s walk it in.</h1>
-      <p class="small">Simple choices. Smooth swings. Sunset pace.</p>
+  scene.innerHTML = `
+    <div class="card stack" style="padding:22px;max-width:860px">
+      <div class="badge">Bogey Hound · 18th · 409 yds</div>
+      <h1>The sun is down,<br/>the vibes are up.<br/>Let’s walk it in.</h1>
+      <p class="small">Two decisions. Smooth meters. Sunset pace.</p>
       <div class="row">
         <button id="start">Start</button>
-        <button class="secondary" id="leaderBtn">Leaderboard</button>
+        <button class="secondary" id="lb">Leaderboard</button>
       </div>
     </div>`;
-  scene.appendChild(wrap);
-  gsap.from(wrap,{y:20,opacity:0,duration:.6,ease:"power2.out"});
   $("#start").onclick=()=>{ resetState(); sceneClubSelect(); };
-  $("#leaderBtn").onclick=sceneLeaderboard;
+  $("#lb").onclick=sceneLeaderboard;
 }
 
+/* ============================
+   Minimap (overhead top-down)
+   ============================ */
+function drawMini(canvas, zoomGreen=false){
+  const dpr = Math.max(1, Math.floor(window.devicePixelRatio||1));
+  const bb = canvas.getBoundingClientRect();
+  canvas.width = Math.floor(bb.width*dpr);
+  canvas.height= Math.floor(bb.height*dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
+
+  // base
+  ctx.fillStyle="#0e2a26";
+  ctx.fillRect(0,0,bb.width,bb.height);
+
+  // course silhouette
+  // tee left, green right; beach/water top-right; trees top-left
+  // draw fairway
+  ctx.fillStyle="#245e4f";
+  roundRect(ctx, bb.width*0.05, bb.height*0.45, bb.width*0.9, bb.height*0.22, 28,true);
+  // rough margins
+  ctx.strokeStyle="rgba(255,255,255,.06)";
+  ctx.lineWidth=2; ctx.strokeRect(bb.width*0.04, bb.height*0.42, bb.width*0.92, bb.height*0.28);
+
+  // water & beach
+  ctx.fillStyle="#1e587a"; ctx.beginPath();
+  ctx.ellipse(bb.width*0.82, bb.height*0.42, bb.width*0.18, bb.height*0.22, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle="#c8b392"; ctx.beginPath();
+  ctx.ellipse(bb.width*0.78, bb.height*0.58, bb.width*0.22, bb.height*0.10, 0, 0, Math.PI*2); ctx.fill();
+
+  // bunker & green
+  const greenCx = bb.width*0.88, greenCy = bb.height*0.56, greenRx = bb.width*0.08, greenRy = bb.height*0.06;
+  ctx.fillStyle="#2f7a63"; ctx.beginPath();
+  ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle="#dcc5a8"; ctx.beginPath();
+  ctx.ellipse(greenCx- greenRx*0.3, greenCy+greenRy*0.2, greenRx*0.35, greenRy*0.25, 0, 0, Math.PI*2); ctx.fill();
+
+  // flag (hole is at greenCx+greenRx*0.3, greenCy)
+  const holeX = greenCx+greenRx*0.3, holeY = greenCy;
+  ctx.strokeStyle="#fff"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
+  ctx.fillStyle="#C1121F"; ctx.beginPath();
+  ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
+
+  // build path coords in pixel space
+  const points = STATE.path.map(p=>({
+    x: lerp(0, bb.width, p.x),
+    y: lerp(0, bb.height, p.y)
+  }));
+
+  // zoom green if STATE.onGreen or explicit
+  if(zoomGreen || STATE.onGreen){
+    // transform so that green occupies canvas
+    const pad=14;
+    const gx = greenCx-greenRx-pad, gy = greenCy-greenRy-pad, gw = greenRx*2+pad*2, gh = greenRy*2+pad*2;
+    ctx.save();
+    ctx.clearRect(0,0,bb.width,bb.height);
+    ctx.fillStyle="#0e2a26"; ctx.fillRect(0,0,bb.width,bb.height);
+
+    // scale+translate
+    const sx = bb.width/gw, sy = bb.height/gh, s = Math.min(sx,sy);
+    ctx.translate(-gx*s, -gy*s);
+    ctx.scale(s,s);
+
+    // redraw green region only
+    ctx.fillStyle="#2f7a63"; ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle="#dcc5a8"; ctx.beginPath(); ctx.ellipse(greenCx- greenRx*0.3, greenCy+greenRy*0.2, greenRx*0.35, greenRy*0.25, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle="#fff"; ctx.lineWidth=2/s;
+    ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
+    ctx.fillStyle="#C1121F"; ctx.beginPath(); ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
+
+    // draw traced path within zoomed area
+    const zPts = points.map(pt=>({x:pt.x, y:pt.y}));
+    ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.lineWidth=2/s; ctx.beginPath();
+    for(let i=0;i<zPts.length;i++){ const p=zPts[i]; i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
+    ctx.stroke();
+    // current ball
+    const last=zPts[zPts.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4/s,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // full path in wide view
+  ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.lineWidth=2; ctx.beginPath();
+  for(let i=0;i<points.length;i++){ const p=points[i]; i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
+  ctx.stroke();
+  const last=points[points.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4,0,Math.PI*2); ctx.fill();
+}
+
+function roundRect(ctx,x,y,w,h,r,fill=true){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+  if(fill) ctx.fill(); else ctx.stroke();
+}
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+/* ============================
+   Club selection
+   ============================ */
 function clubOptionsByDist(){
-  const d = STATE.dist;
+  const d=STATE.distYds;
   if(STATE.onGreen) return [{key:"putter",data:CLUBS.putter}];
   if(d>190) return [{key:"driver",data:CLUBS.driver},{key:"drivingIr",data:CLUBS.drivingIr}];
   if(d>120) return [{key:"wood3",data:CLUBS.wood3},{key:"iron5",data:CLUBS.iron5}];
-  if(d>0 && d>60 && d<=120) return [{key:"iron6",data:CLUBS.iron6},{key:"iron8",data:CLUBS.iron8}];
-  if(d>0 && d<=60) return [{key:"pw",data:CLUBS.pw},{key:"lw60",data:CLUBS.lw60}];
-  return [{key:"putter",data:CLUBS.putter}];
+  if(d>60)  return [{key:"iron6",data:CLUBS.iron6},{key:"iron8",data:CLUBS.iron8}];
+  return [{key:"pw",data:CLUBS.pw},{key:"lw60",data:CLUBS.lw60}];
 }
 
 function sceneClubSelect(){
-  setHUD();
   scene.innerHTML="";
-  drawBackdrop(scene);
-  const wrap = document.createElement("div");
-  wrap.className="center";
-  const opts = clubOptionsByDist();
-  const title = STATE.onGreen?"Roll it home":"Pick your pace";
-  wrap.innerHTML = `
-    <div class="card stack" style="padding:22px;max-width:860px">
-      <div class="hud">
-        <div class="pill big">${title}</div>
-        <div class="pill">${STATE.onGreen? Math.round(STATE.dist)+" ft": formatYds(STATE.dist)}</div>
-      </div>
-      <div class="grid2" id="clubs"></div>
-    </div>
-  `;
+  const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="920px";
+
+  // Minimap
+  const mini = document.createElement("div"); mini.className="mini"; mini.innerHTML=`<canvas id="mini"></canvas>`;
+  wrap.appendChild(mini);
   scene.appendChild(wrap);
-  const grid=$("#clubs",wrap);
-  opts.forEach(({key,data})=>{
-    const c=document.createElement("div");
-    c.className="card stack";
-    c.style.padding="18px";
+  drawMini($("#mini"));
+
+  // Card with clubs
+  const card=document.createElement("div"); card.className="card stack"; card.style.padding="18px";
+  const distLabel = STATE.onGreen ? `${Math.round(STATE.distFt)} ft` : `${Math.round(STATE.distYds)} yds`;
+  card.innerHTML = `
+    <div class="hud"><div class="pill">${STATE.onGreen?"Putt":"Pick your pace"}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div></div>
+    <div class="row" id="clubRow"></div>
+  `;
+  wrap.appendChild(card);
+
+  const row=$("#clubRow",card);
+  clubOptionsByDist().forEach(({key,data})=>{
+    const c=document.createElement("div"); c.className="card stack"; c.style.padding="16px"; c.style.flex="1 1 260px";
     c.innerHTML = `
       <div class="badge">${data.kind==="putt"?"PUTT":(data.kind==="aggr"?"Aggressive":"Safe")}</div>
       <h2>${data.name}</h2>
       <div class="small">${data.copy}</div>
-      <div class="row">
-        <div class="pill">Perfect: ${Math.round(data.perf*100)}%</div>
-        <div class="pill">Max: ${data.kind==="putt"?Math.round(data.max)+" ft":Math.round(data.max)+" yds"}</div>
-      </div>
-      <button>Use ${data.name}</button>
-    `;
-    $("button",c).onclick=()=>sceneSwing(key, data);
-    grid.appendChild(c);
+      <div class="row"><div class="pill">Max ${STATE.onGreen?Math.round(data.max)+" ft":Math.round(data.max)+" yds"}</div><div class="pill">Perfect ~${Math.round(data.perf*100)}%</div></div>
+      <button>Use ${data.name}</button>`;
+    $("button",c).onclick=()=>sceneSwing(key,data);
+    row.appendChild(c);
   });
-  gsap.from($$(".card",wrap),{y:16,opacity:0,stagger:.06,duration:.5,ease:"power2.out"});
 }
 
-/* ========= Swing Meter ========= */
+/* ============================
+   Swing meters
+   ============================ */
 function sceneSwing(key, club){
-  setHUD();
   scene.innerHTML="";
-  drawBackdrop(scene);
+  const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="920px";
 
-  const wrap = document.createElement("div");
-  wrap.className="center stack";
-  wrap.innerHTML = `
-    <div class="hud">
-      <div class="pill">${club.kind==="putt"?"Putter":"Swing"} · ${club.name}</div>
-      <div class="pill">${STATE.onGreen?Math.round(STATE.dist)+" ft":formatYds(STATE.dist)}</div>
-    </div>
-    <div class="meterWrap">
-      <div class="meter"><canvas id="angle"></canvas></div>
-      <div class="meter" style="margin-top:168px"><canvas id="power"></canvas></div>
-    </div>
-    <div class="row">
-      <button id="abort" class="secondary">Back</button>
-      <button id="lock" disabled>Lock Angle</button>
-      <button id="fire" disabled>Hit</button>
-    </div>
-  `;
+  // Minimap (zoom on green)
+  const mini = document.createElement("div"); mini.className="mini"; mini.innerHTML=`<canvas id="mini"></canvas>`;
+  wrap.appendChild(mini);
   scene.appendChild(wrap);
+  drawMini($("#mini"), STATE.onGreen);
 
-  const angleCVS = $("#angle");
-  const powerCVS = $("#power");
-  const aCtx = angleCVS.getContext("2d");
-  const pCtx = powerCVS.getContext("2d");
+  // Angle meter (not for putting)
+  const meters=document.createElement("div"); meters.className="meters";
+  const distLabel = STATE.onGreen ? `${Math.round(STATE.distFt)} ft` : `${Math.round(STATE.distYds)} yds`;
+  const header = document.createElement("div");
+  header.className="hud";
+  header.innerHTML = `<div class="pill">${club.kind==="putt"?"Putter":"Swing · "+club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
+  wrap.appendChild(header);
 
-  // fit canvas
-  [angleCVS,powerCVS].forEach(cv=>{
-    const bb = cv.getBoundingClientRect();
-    cv.width = Math.max(600,bb.width*2);
-    cv.height = Math.max(120,bb.height*2);
-  });
+  let needAngle = club.kind!=="putt";
+  let angleVal = 0.5; // default straight
+  let powerVal = 0;   // 0..1
+  let raf;
 
-  let anglePos=0, angleDir=1, angleLocked=false, powerPos=0, powerDir=1, raf;
-  const perf = club.perf; // center perfect window
-  const speedA = club.speed*0.018;
+  // ANGLE
+  let angleBox, angleCtx;
+  if(needAngle){
+    angleBox=document.createElement("div"); angleBox.className="meter"; angleBox.innerHTML=`<canvas id="angle"></canvas>`;
+    meters.appendChild(angleBox);
+  }
+
+  // POWER
+  const powerBox=document.createElement("div"); powerBox.className="meter"; powerBox.innerHTML=`<canvas id="power"></canvas>`;
+  meters.appendChild(powerBox);
+  wrap.appendChild(meters);
+
+  // Controls
+  const ctrls=document.createElement("div"); ctrls.className="row";
+  ctrls.innerHTML = `<button class="secondary" id="back">Back</button>
+                     ${needAngle?`<button id="lock">Lock Angle</button>`:""}
+                     <button id="hit" ${needAngle?"disabled":""}>Hit</button>`;
+  wrap.appendChild(ctrls);
+
+  // Canvas setup
+  let aCVS = needAngle?$("#angle"):null;
+  let pCVS = $("#power");
+  const dpr = Math.max(1,Math.floor(window.devicePixelRatio||1));
+  function fit(cv){ const bb=cv.getBoundingClientRect(); cv.width=Math.floor(bb.width*dpr); cv.height=Math.floor(bb.height*dpr); return cv.getContext("2d"); }
+  if(needAngle){ angleCtx=fit(aCVS); }
+  const powerCtx=fit(pCVS);
+
+  // Anim params
+  let cursorA=0, dirA=1, cursorP=0, dirP=1;
+  const speedA = club.speed * 0.018;
   const speedP = (club.kind==="putt"? club.speed*0.010 : club.speed*0.014);
 
-  function drawAngle(){
-    const w=angleCVS.width,h=angleCVS.height;
-    aCtx.clearRect(0,0,w,h);
-    // rail
-    aCtx.fillStyle="rgba(255,255,255,.08)";
-    aCtx.fillRect(w*.06,h*.46,w*.88,h*.08);
-    // perfect window
-    const center=.5;
-    const pw = w*.88*perf;
-    const px = w*.06 + (w*.88*center - pw/2);
-    aCtx.fillStyle="rgba(212,61,61,.25)";
-    aCtx.fillRect(px,h*.46,pw,h*.08);
-    // penalty zones (aggressive anglePenalty)
-    if(club.anglePenalty>0){
-      aCtx.fillStyle="rgba(255,255,255,.10)";
-      // left and right thin bands representing hazard risk
-      aCtx.fillRect(w*.06,h*.46,w*.88*club.anglePenalty,h*.08);
-      aCtx.fillRect(w*(.94 - .88*club.anglePenalty),h*.46,w*.88*club.anglePenalty,h*.08);
+  // Dynamic ideal band for POWER centered on required power
+  function requiredPower(){
+    if(STATE.onGreen){
+      const targetFt = clamp(STATE.distFt, 2, club.max); // ft
+      return clamp(targetFt / club.max, 0, 1);
+    } else {
+      // approximate lie attenuation from last outcome
+      const last = lastOutcome();
+      let lie = 1;
+      if(last==="trees") lie=0.5;
+      else if(last==="roughL"||last==="roughR"||last==="sand") lie=0.9;
+      const neededYds = clamp(STATE.distYds, 1, club.max*1.05);
+      const effMax = club.max * lie;
+      return clamp(neededYds / Math.max(1, effMax), 0, 1);
     }
-    // cursor
-    const cx = w*.06 + anglePos*w*.88;
-    aCtx.fillStyle="#fff";
-    aCtx.fillRect(cx-4,h*.42,8,h*.16);
   }
-  function drawPower(){
-    const w=powerCVS.width,h=powerCVS.height;
-    pCtx.clearRect(0,0,w,h);
-    // rail
-    pCtx.fillStyle="rgba(255,255,255,.08)";
-    pCtx.fillRect(w*.06,h*.12,w*.88,h*.76);
-    // tick marks + distance text
-    pCtx.fillStyle="rgba(255,255,255,.35)";
-    pCtx.font="bold 28px 'Space Grotesk'";
-    pCtx.textAlign="right";
-    const max = club.max;
-    for(let i=0;i<=4;i++){
-      const y = h*.88 - (h*.76)*(i/4);
-      pCtx.fillRect(w*.06,y, w*.88, 2);
-      const unit = STATE.onGreen?"ft":"yds";
-      const dist = Math.round(max*(i/1));
-      pCtx.fillText((i===4?max:Math.round(max*i/4))+" "+unit, w*.05, y+10);
+  function idealBandWidth(){
+    // wider band when closer to target (we help the user), also safer clubs have wider band
+    const base = club.kind==="putt" ? 0.28 : (club.kind==="safe"?0.22:0.14);
+    if(STATE.onGreen){
+      const ft = STATE.distFt;
+      if(ft<=8) return Math.max(base, 0.40);
+      if(ft<=15) return Math.max(base, 0.30);
+      if(ft<=30) return Math.max(base, 0.22);
+      return Math.max(base, 0.18);
     }
-    // perfect sweet spot for power (reuse perf)
-    const ph = h*.76*perf;
-    const py = h*.12 + (h*.76*.5 - ph/2);
-    pCtx.fillStyle="rgba(212,61,61,.25)";
-    pCtx.fillRect(w*.06,py,w*.88,ph);
+    return base;
+  }
+
+  // draw angle
+  function drawAngle(){
+    if(!needAngle) return;
+    const bb=aCVS.getBoundingClientRect();
+    angleCtx.setTransform(1,0,0,1,0,0);
+    angleCtx.scale(dpr,dpr);
+    angleCtx.clearRect(0,0,bb.width,bb.height);
+    // rail
+    angleCtx.fillStyle="rgba(255,255,255,.08)";
+    angleCtx.fillRect(bb.width*.06, bb.height*.46, bb.width*.88, bb.height*.08);
+    // perfect zone (centered)
+    const perf=club.perf;
+    const pw = bb.width*.88*perf;
+    const px = bb.width*.06 + bb.width*.88*0.5 - pw/2;
+    angleCtx.fillStyle="rgba(212,61,61,.25)";
+    angleCtx.fillRect(px, bb.height*.46, pw, bb.height*.08);
+    // penalty zones
+    if(club.anglePenalty>0){
+      angleCtx.fillStyle="rgba(255,255,255,.10)";
+      angleCtx.fillRect(bb.width*.06, bb.height*.46, bb.width*.88*club.anglePenalty, bb.height*.08);
+      angleCtx.fillRect(bb.width*(.94 - .88*club.anglePenalty), bb.height*.46, bb.width*.88*club.anglePenalty, bb.height*.08);
+    }
     // cursor
-    const cy = h*.88 - powerPos*h*.76;
-    pCtx.fillStyle="#fff";
-    pCtx.fillRect(w*.5-6,cy-6,12,12);
+    const cx = bb.width*.06 + cursorA*bb.width*.88;
+    angleCtx.fillStyle="#fff"; angleCtx.fillRect(cx-4, bb.height*.42, 8, bb.height*.16);
+  }
+
+  // draw power with dynamic ideal band
+  function drawPower(){
+    const bb=pCVS.getBoundingClientRect();
+    powerCtx.setTransform(1,0,0,1,0,0);
+    powerCtx.scale(dpr,dpr);
+    powerCtx.clearRect(0,0,bb.width,bb.height);
+    // rail
+    powerCtx.fillStyle="rgba(255,255,255,.08)";
+    powerCtx.fillRect(bb.width*.06, bb.height*.12, bb.width*.88, bb.height*.76);
+
+    // ticks & labels
+    powerCtx.fillStyle="rgba(255,255,255,.35)";
+    powerCtx.font="bold 24px 'Space Grotesk'";
+    powerCtx.textAlign="right";
+    const unit = STATE.onGreen? "ft":"yds";
+    const maxMark = STATE.onGreen? club.max : club.max;
+    for(let i=0;i<=4;i++){
+      const y = bb.height*.88 - (bb.height*.76)*(i/4);
+      powerCtx.fillRect(bb.width*.06, y, bb.width*.88, 2);
+      powerCtx.fillText(Math.round(maxMark*i/4)+" "+unit, bb.width*.05, y+9);
+    }
+
+    // dynamic ideal band
+    const ideal = requiredPower();       // 0..1
+    const band = idealBandWidth();       // width (0..1)
+    const ph = bb.height*.76 * band;
+    const centerY = bb.height*.88 - (bb.height*.76)*ideal;
+    const py = clamp(centerY - ph/2, bb.height*.12, bb.height*.88-ph);
+    powerCtx.fillStyle="rgba(212,61,61,.28)";
+    powerCtx.fillRect(bb.width*.06, py, bb.width*.88, ph);
+
+    // cursor
+    const cy = bb.height*.88 - cursorP*(bb.height*.76);
+    powerCtx.fillStyle="#fff"; powerCtx.fillRect(bb.width*.5-6, cy-6, 12, 12);
   }
 
   function tick(){
-    if(!angleLocked){
-      anglePos += speedA*angleDir;
-      if(anglePos>1){anglePos=1;angleDir=-1}
-      if(anglePos<0){anglePos=0;angleDir=1}
+    if(needAngle){
+      cursorA += speedA*dirA; if(cursorA>1){cursorA=1;dirA=-1} if(cursorA<0){cursorA=0;dirA=1}
       drawAngle();
-    } else {
-      powerPos += speedP*powerDir;
-      if(powerPos>1){powerPos=1;powerDir=-1}
-      if(powerPos<0){powerPos=0;powerDir=1}
-      drawPower();
     }
-    raf = requestAnimationFrame(tick);
+    cursorP += speedP*dirP; if(cursorP>1){cursorP=1;dirP=-1} if(cursorP<0){cursorP=0;dirP=1}
+    drawPower();
+    raf=requestAnimationFrame(tick);
   }
   tick();
 
-  $("#abort").onclick=()=>{ cancelAnimationFrame(raf); sceneClubSelect(); };
-  $("#lock").disabled=false;
-  $("#lock").onclick=()=>{ angleLocked=true; $("#lock").disabled=true; $("#fire").disabled=false; };
-  $("#fire").onclick=()=>{
+  $("#back").onclick=()=>{ cancelAnimationFrame(raf); sceneClubSelect(); };
+  if(needAngle){
+    $("#lock").onclick=()=>{ angleVal=cursorA; $("#lock").disabled=true; $("#hit").disabled=false; };
+  }
+  $("#hit").onclick=()=>{
     cancelAnimationFrame(raf);
-    resolveSwing(club, anglePos, powerPos);
+    angleVal = needAngle ? angleVal : 0.5;
+    powerVal = cursorP;
+    resolveSwing(club, angleVal, powerVal);
   };
 }
 
-/* ========= Physics-ish + Outcome ========= */
-function resolveSwing(club, a, p){
+function lastOutcome(){
+  const h=STATE._history||[];
+  return h.length? h[h.length-1].outcome : null;
+}
+
+/* ============================
+   Outcomes & physics-lite
+   ============================ */
+const OUT = { TREES:"trees", ROUGH_L:"roughL", FAIRWAY:"fairway", ROUGH_R:"roughR", WATER:"water", SAND:"sand", GREEN:"green", CUP:"cup" };
+
+function resolveSwing(club, angle, power){
+  // Count the stroke immediately (single source of truth)
   STATE.shots++;
-  setHUD();
 
-  // angle quality: distance from center
-  const angleErr = Math.abs(a - .5);
-  const inPerfectAngle = angleErr <= (club.perf/2);
-  const penaltyAngle = (club.kind!=="putt") && (a < club.anglePenalty || a > (1 - club.anglePenalty));
+  // determine lie penalty from last outcome
+  let lie=1;
+  const prev = lastOutcome();
+  if(prev===OUT.TREES) lie=0.5;
+  else if(prev===OUT.ROUGH_L||prev===OUT.ROUGH_R||prev===OUT.SAND) lie=0.9;
+  else if(prev===OUT.GREEN && club.kind!=="putt") lie=0.9;
 
-  // power calc
-  const max = club.max;
-  let carry = max * p; // raw
-  const holeOutWindow = (club.kind==="putt") ? 0 : (club.kind==="aggr" ? 0.001 : 0.0001);
-  const holeOutByPower = (p>0.999 && Math.random() < holeOutWindow);
+  // Putting – power only, generous make window; auto-aim straight.
+  if(club.kind==="putt" || STATE.onGreen){
+    const target = clamp(STATE.distFt, 1, club.max); // feet
+    const hitFt = clamp(Math.round(power * club.max), 0, club.max);
+    // tolerance widens dramatically inside 8 ft; modest beyond
+    let tol = 2; // feet
+    if(target<=6) tol = 3.5;
+    else if(target<=12) tol = 3;
+    else if(target<=20) tol = 2.5;
+    else if(target<=40) tol = 2;
 
-  // lie penalties from previous shot
-  const prev = STATE.history[STATE.history.length-1];
-  let liePenalty = 0;
-  if(prev){
-    if(prev.outcome===OUTCOMES.TREES) liePenalty = .5;
-    else if(prev.outcome===OUTCOMES.ROUGH_L || prev.outcome===OUTCOMES.ROUGH_R) liePenalty=.1;
-    else if(prev.outcome===OUTCOMES.SAND) liePenalty=.1;
-    else if(prev.outcome===OUTCOMES.GREEN) liePenalty=.1; // long/short adjustment
-  }
-
-  // apply penalty on carry for lie (except putt which uses feet)
-  if(club.kind!=="putt") carry *= (1 - liePenalty);
-
-  // angle lateral to decide terrain
-  let lateral = (a - .5); // -0.5 left, +0.5 right scaled
-  // classify outcome by distance + lateral and hazards bands
-  let outcome = OUTCOMES.FAIRWAY;
-
-  // distance to hole after shot
-  let distBefore = STATE.dist;
-  let distAfter;
-
-  if(club.kind==="putt"){
-    // Convert remaining yds to feet for putt; 1 yd = 3 ft approximate
-    let feetRemain = Math.max(3, Math.round(STATE.dist)); // STATE.dist used as feet on green
-    let puttFeet = Math.round(club.max * p);
-    const diff = Math.abs(puttFeet - feetRemain);
-    const holed = diff <= 2; // 2 ft give radius
-    distAfter = holed ? 0 : Math.max(1, feetRemain - puttFeet);
-    outcome = holed ? OUTCOMES.CUP : OUTCOMES.GREEN;
-  } else {
-    // airborne shot
-    // Environmental caps: ensure progress to green in <= 5 shots
-    const minProgress = distBefore / (6 - Math.min(STATE.shots,5)); // ramps up
-    carry = Math.max(carry, Math.min(minProgress, max*0.92));
-
-    distAfter = Math.max(0, distBefore - carry);
-
-    // terrain by lateral + distance bands
-    if(distAfter===0 && (inPerfectAngle || holeOutByPower)) outcome = OUTCOMES.CUP;
-    else {
-      const farBand = distAfter>100;
-      if(penaltyAngle && farBand){
-        outcome = lateral>0 ? OUTCOMES.WATER : OUTCOMES.TREES;
-      } else {
-        // near green bands
-        if(distAfter<=60){
-          if(lateral>0.22) outcome = OUTCOMES.SAND;
-          else if(Math.abs(lateral)<=0.18) outcome = OUTCOMES.GREEN;
-          else outcome = (lateral<0)?OUTCOMES.ROUGH_L:OUTCOMES.ROUGH_R;
-        } else {
-          // fairway / rough split
-          if(Math.abs(lateral)<=0.18) outcome = OUTCOMES.FAIRWAY;
-          else outcome = (lateral<0)?OUTCOMES.ROUGH_L:OUTCOMES.ROUGH_R;
-        }
-      }
-    }
-  }
-
-  // penalties & reposition
-  if(outcome===OUTCOMES.WATER){
-    STATE.penalties++; STATE.vibeTags.add("Beach Bum");
-    showToast(choice(COMMENTARY.water));
-    // place at same distance (no progress), but next lie rough right
-    outcome = OUTCOMES.ROUGH_R;
-  }
-
-  // Set new state
-  if(outcome===OUTCOMES.CUP){
-    STATE.dist = 0;
-    STATE.onGreen = true;
-    concludeShot(outcome, distBefore, distAfter, club, a, p);
-    return;
-  }
-
-  if(outcome===OUTCOMES.GREEN){
-    // switch to feet on green
-    STATE.onGreen = true;
-    // convert remaining yards to feet approx
-    STATE.dist = Math.max(6, Math.round(distAfter*3));
-  } else if(club.kind==="putt"){
-    // still putting
-    STATE.onGreen = true;
-    STATE.dist = distAfter;
-  } else {
-    STATE.onGreen = false;
-    STATE.dist = Math.max(1, distAfter);
-  }
-
-  concludeShot(outcome, distBefore, STATE.dist, club, a, p);
-}
-
-function concludeShot(outcome, distBefore, distAfter, club, a, p){
-  setHUD();
-
-  // vibe tags
-  if(outcome===OUTCOMES.TREES) STATE.vibeTags.add("Lumberjack");
-  if(outcome===OUTCOMES.SAND) STATE.vibeTags.add("Beach Bum");
-  if(outcome===OUTCOMES.FAIRWAY) STATE.vibeTags.add("Sundowner");
-
-  // commentary
-  let line = "";
-  if(outcome===OUTCOMES.FAIRWAY) line = choice(COMMENTARY.fairway);
-  else if(outcome===OUTCOMES.ROUGH_L || outcome===OUTCOMES.ROUGH_R) line = choice(COMMENTARY.rough);
-  else if(outcome===OUTCOMES.TREES) line = choice(COMMENTARY.trees);
-  else if(outcome===OUTCOMES.SAND) line = choice(COMMENTARY.sand);
-  else if(outcome===OUTCOMES.GREEN) line = choice(COMMENTARY.green);
-  else if(outcome===OUTCOMES.CUP) line = choice(COMMENTARY.cup);
-
-  animateBall(outcome, ()=> {
-    showToast(line, 1500);
-    STATE.history.push({outcome, distBefore, distAfter, club:club.name});
-    if(outcome===OUTCOMES.CUP){
-      finishRound();
+    if(Math.abs(hitFt - target) <= tol){
+      // holed
+      STATE.onGreen=true; STATE.distFt=0;
+      pushPathToGreen(); // move dot to hole
+      pushHistory(OUT.CUP, club.name);
+      SFX.cup.play();
+      return finishRound();
     } else {
-      // ensure bound to max 4 putts when on green
-      if(STATE.onGreen && STATE.history.filter(h=>h.club==="Putter").length>=3){
-        // auto tap-in
-        STATE.shots++;
-        STATE.dist=0;
-        STATE.history.push({outcome:OUTCOMES.CUP, distBefore:distAfter, distAfter:0, club:"Putter"});
-        finishRound(true);
-      } else {
-        setTimeout(sceneClubSelect, 520);
-      }
+      // remaining feet
+      STATE.onGreen=true;
+      STATE.distFt = Math.max(1, Math.abs(target - hitFt));
+      pushPathTowardHole(hitFt / target); // draw along the green toward hole
+      pushHistory(OUT.GREEN, club.name);
+      showToast(choice(COMMENTARY.green));
+      return sceneClubSelect();
     }
-  });
+  }
+
+  // Full shot
+  const effMax = club.max * lie;
+  let carry = clamp(power*effMax, 8, effMax); // ensure progress
+  const before = STATE.distYds;
+  let after = Math.max(0, before - carry);
+
+  // lateral from angle (center 0.5). Used for minimap offset & hazards.
+  const lateral = angle - 0.5;
+
+  // outcome
+  let outcome = OUT.FAIRWAY;
+
+  // hazard windows (simple bands when >100 yds left)
+  if(before>100){
+    const pen = (angle < club.anglePenalty) || (angle > 1 - club.anglePenalty);
+    if(pen){ outcome = lateral>0 ? OUT.WATER : OUT.TREES; }
+  }
+
+  // near green classification
+  if(after<=60 && outcome===OUT.FAIRWAY){
+    if(lateral>0.22) outcome = OUT.SAND;
+    else if(Math.abs(lateral)<=0.18) outcome = OUT.GREEN;
+    else outcome = (lateral<0)? OUT.ROUGH_L : OUT.ROUGH_R;
+  } else if(outcome===OUT.FAIRWAY){
+    if(Math.abs(lateral)<=0.18) outcome = OUT.FAIRWAY;
+    else outcome = (lateral<0)? OUT.ROUGH_L : OUT.ROUGH_R;
+  }
+
+  // penalties
+  if(outcome===OUT.WATER){
+    STATE.penalties++;
+    showToast(choice(COMMENTARY.water));
+    // place to rough right at same remaining distance band (small forgiveness)
+    outcome = OUT.ROUGH_R;
+  }
+
+  // update distances / green flip
+  if(outcome===OUT.GREEN){
+    STATE.onGreen=true;
+    STATE.distFt = Math.max(4, Math.round(after*3));
+  } else {
+    STATE.onGreen=false;
+    STATE.distYds = Math.max(1, after);
+  }
+
+  // minimap point
+  pushPathByCarry(carry/before, lateral);
+
+  // commentary & next
+  let line = "";
+  if(outcome===OUT.FAIRWAY) line=choice(COMMENTARY.fairway);
+  else if(outcome===OUT.ROUGH_L||outcome===OUT.ROUGH_R) line=choice(COMMENTARY.rough);
+  else if(outcome===OUT.TREES) line=choice(COMMENTARY.trees);
+  else if(outcome===OUT.SAND) line=choice(COMMENTARY.sand);
+  else if(outcome===OUT.GREEN) line=choice(COMMENTARY.green);
+
+  pushHistory(outcome, club.name);
+  if(outcome===OUT.GREEN && STATE.distFt<=2){ // tap-in chance on very close (requires one more putt)
+    showToast("Inside two. Clean it up.");
+  } else if(line){ showToast(line); }
+
+  sceneClubSelect();
 }
 
-/* ========= Simple Ball Animation (arc + land) ========= */
-function animateBall(outcome, done){
-  // create a little ball animation across the backdrop
-  const b = document.createElement("div");
-  b.className="ball";
-  scene.appendChild(b);
-  const start = {x: "12%", y: "72%"};
-  let end = {x: "60%", y:"40%"};
-  if(outcome===OUTCOMES.FAIRWAY) end={x:"60%",y:"58%"};
-  if(outcome===OUTCOMES.ROUGH_L) end={x:"24%",y:"58%"};
-  if(outcome===OUTCOMES.ROUGH_R) end={x:"78%",y:"60%"};
-  if(outcome===OUTCOMES.TREES) end={x:"14%",y:"50%"};
-  if(outcome===OUTCOMES.SAND) end={x:"66%",y:"46%"};
-  if(outcome===OUTCOMES.GREEN) end={x:"66%",y:"40%"};
-  if(outcome===OUTCOMES.CUP) end={x:"66%",y:"40%"};
-
-  gsap.set(b,{left:start.x, top:start.y});
-  const tl = gsap.timeline({onComplete:()=>{ b.remove(); done(); }});
-  tl.to(b,{duration:.5,yPercent:-120,ease:"power2.out"})
-    .to(b,{duration:.55,yPercent:0,ease:"bounce.out"})
-    .to(b,{left:end.x, top:end.y, duration:.75, ease:"power1.inOut"},0);
+/* ============================
+   Path helpers for minimap
+   ============================ */
+function pushPathByCarry(progress, lateral){
+  // progress: 0..1 portion of remaining x toward hole
+  const last = STATE.path[STATE.path.length-1];
+  // hole anchor
+  const holeX=0.88+0.08*0.75, holeY=0.56; // near flag
+  const targetX=0.90, targetY=0.58;
+  // move along x to the right
+  const newX = clamp(last.x + progress*0.8, 0.05, 0.95);
+  // lateral sway scaled
+  const newY = clamp(last.y + lateral*0.6, 0.20, 0.80);
+  STATE.path.push({x:newX, y:newY});
 }
 
-/* ========= Finish & Score ========= */
-function finishRound(autoTap=false){
-  STATE.finished = true;
+function pushPathTowardHole(fraction){
+  // On green: interpolate from current to hole by fraction of distance covered
+  const last = STATE.path[STATE.path.length-1];
+  const hole = {x:0.96, y:0.56};
+  const nx = clamp( lerp(last.x, hole.x, clamp(fraction,0,1)), 0.0, 1.0);
+  const ny = clamp( lerp(last.y, hole.y, clamp(fraction,0,1)), 0.0, 1.0);
+  STATE.path.push({x:nx,y:ny});
+}
+
+function pushPathToGreen(){
+  // snap to cup
+  STATE.path.push({x:0.96, y:0.56});
+}
+
+/* ============================
+   History & scoring
+   ============================ */
+function pushHistory(outcome, clubName){
+  STATE._history = STATE._history||[];
+  STATE._history.push({outcome, club:clubName, shots:STATE.shots, pen:STATE.penalties, onGreen:STATE.onGreen, distYds:STATE.distYds, distFt:STATE.distFt});
+  if(outcome===OUT.CUP){ /* handled in finishRound */ }
+}
+
+/* ============================
+   Finish & leaderboard
+   ============================ */
+const LB_KEY="bh_walkin_lb_v2";
+function loadLB(){ try{return JSON.parse(localStorage.getItem(LB_KEY)||"[]")}catch(e){return[]} }
+function saveLB(i,s){ const lb=loadLB(); lb.push({i,s,t:Date.now()}); lb.sort((a,b)=>a.s-b.s||a.t-b.t); localStorage.setItem(LB_KEY,JSON.stringify(lb.slice(0,10))); }
+
+function finishRound(){
+  STATE.finished=true;
   const strokes = STATE.shots + STATE.penalties;
-  const par = 4; // 409yd par 4
-  const diff = strokes - par;
+  const par=4, diff=strokes-par;
   const label = diff<=-2?"Eagle":diff===-1?"Birdie":diff===0?"Par":diff===1?"Bogey":"+ "+diff;
-  const vibe = [...STATE.vibeTags][0] || (diff<=0?"Sundowner":"The Walker");
 
-  scene.innerHTML="";
-  drawBackdrop(scene);
-
-  const code = genUnlockCode();
-  const wrap = document.createElement("div");
-  wrap.className="center";
-  wrap.innerHTML = `
-    <div class="card stack" style="padding:22px;max-width:880px">
-      <div class="row"><div class="badge">Final</div></div>
-      <h1>${strokes} • ${label}</h1>
-      <p class="small">You walked away with a ${strokes}. ${label==="Bogey"?"Bogey never looked so good.":"That'll play."}</p>
+  scene.innerHTML=`
+    <div class="card stack" style="padding:22px;max-width:860px">
+      <div class="badge">Final</div>
+      <h2>${strokes} • ${label}</h2>
+      <div class="row"><div class="pill">Shots: ${STATE.shots}</div><div class="pill">Penalties: ${STATE.penalties}</div></div>
       <div class="row">
-        <div class="pill">Vibe Title: <strong style="margin-left:6px">${vibe}</strong></div>
-        <div class="pill">Penalties: ${STATE.penalties}</div>
+        <button id="again">Restart</button>
+        <button class="secondary" id="store">Visit the store</button>
       </div>
-      <hr class="hr" />
-      <div class="stack">
-        <div class="cta">
-          <button id="join">Join the pack</button>
-          <button id="store">Visit the store</button>
-          <button class="secondary" id="again">Restart</button>
-        </div>
-        <div class="small">You unlocked the exclusive “Walk It In” tee · Use this code: <span class="code" id="unlock">${code}</span></div>
+      <div class="row">
+        <input id="init" maxlength="3" placeholder="ABC" style="padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:var(--cream)">
+        <button id="save">Save Score</button>
       </div>
-
-      <div class="stack" style="margin-top:16px">
-        <div class="row">
-          <input id="initials" placeholder="Enter 3-letter initials" maxlength="3" style="padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:var(--cream);outline:none">
-          <button id="saveScore">Save to Leaderboard</button>
-        </div>
-        <div id="saveMsg" class="small"></div>
-      </div>
-    </div>
-  `;
-  scene.appendChild(wrap);
-  gsap.from(wrap,{y:16,opacity:0,duration:.6,ease:"power2.out"});
-
-  $("#join").onclick=()=>window.location.href="https://bogeyhound.com";
-  $("#store").onclick=()=>window.location.href="https://bogeyhound.com";
+      <div id="msg" class="small"></div>
+    </div>`;
   $("#again").onclick=sceneTitle;
-
-  $("#saveScore").onclick=()=>{
-    const init = ($("#initials").value||"???").toUpperCase().replace(/[^A-Z]/g,"").slice(0,3).padEnd(3,"_");
-    if(PROFANITY.includes(init)){ $("#saveMsg").textContent="Try different initials."; return; }
-    saveScore(init, strokes);
-    $("#saveMsg").textContent="Saved. Check Leaderboard.";
-  };
+  $("#store").onclick=()=>location.href="https://bogeyhound.com";
+  $("#save").onclick=()=>{ const i=($("#init").value||"__").toUpperCase().replace(/[^A-Z]/g,"").slice(0,3).padEnd(3,"_"); saveLB(i,strokes); $("#msg").textContent="Saved."; };
 }
 
-/* ========= Leaderboard (localStorage) ========= */
-const LB_KEY="bh_walkin_lb_v1";
-function loadLB(){ try{ return JSON.parse(localStorage.getItem(LB_KEY)||"[]"); }catch(e){ return [] } }
-function saveScore(initials, score){
-  const lb = loadLB();
-  lb.push({i:initials, s:score, t:Date.now()});
-  lb.sort((a,b)=>a.s-b.s || a.t-b.t);
-  localStorage.setItem(LB_KEY, JSON.stringify(lb.slice(0,10)));
-}
 function sceneLeaderboard(){
-  scene.innerHTML="";
-  drawBackdrop(scene);
-  const lb = loadLB();
-  const rows = lb.map((r,idx)=>`<tr><td>${idx+1}</td><td>${r.i}</td><td>${r.s}</td><td>${new Date(r.t).toLocaleDateString()}</td></tr>`).join("") || `<tr><td colspan="4" class="small">No scores yet. Go set one.</td></tr>`;
-  const wrap=document.createElement("div");
-  wrap.className="center";
-  wrap.innerHTML=`
+  const lb=loadLB();
+  const rows = lb.map((r,i)=>`<tr><td>${i+1}</td><td>${r.i}</td><td>${r.s}</td><td>${new Date(r.t).toLocaleDateString()}</td></tr>`).join("") || `<tr><td colspan="4" class="small">No scores yet.</td></tr>`;
+  scene.innerHTML=`
     <div class="card stack" style="padding:22px;max-width:760px">
-      <div class="row"><div class="badge">Top 10</div></div>
       <h2>Leaderboard</h2>
       <table class="leader">
         <thead><tr><th>#</th><th>Initials</th><th>Score</th><th>Date</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <div class="row"><button id="back" class="secondary">Back</button></div>
+      <div class="row"><button class="secondary" id="back">Back</button></div>
     </div>`;
-  scene.appendChild(wrap);
   $("#back").onclick=sceneTitle;
 }
 
-/* ========= Unlock Code ========= */
-function genUnlockCode(){
-  const alph="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let c="BH-";
-  for(let i=0;i<6;i++) c+=alph[Math.floor(Math.random()*alph.length)];
-  return c;
-}
-
-/* ========= Boot ========= */
+/* ============================
+   Boot
+   ============================ */
 sceneTitle();
 </script>
 </body>
 </html>
-
