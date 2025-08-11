@@ -5,18 +5,28 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Bogey Hound – The Walk In</title>
 
+<!-- Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!-- GSAP + Howler (can be swapped later with real assets) -->
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
 
 <style>
-:root{ --navy:#0B1F2A; --cream:#FDF0D5; --red:#C1121F; --burg:#780000; --sky:#669BBC; --white:#FFFFFF; --slate:#6D8196; --gray:#4A4A4A; }
+:root{
+  --navy:#0B1F2A; --cream:#FDF0D5; --red:#C1121F; --burg:#780000;
+  --sky:#669BBC; --white:#FFFFFF; --slate:#6D8196; --gray:#4A4A4A;
+  --rough:#2a4a3f; --fair:#2f6a58; --water:#1e587a; --sand:#d8c3a5; --tree:#163d33;
+}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--navy);color:var(--cream);font-family:"Space Grotesk",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-h1,h2{font-family:"Libre Baskerville",serif;margin:0}
+h1,h2,h3{font-family:"Libre Baskerville",serif;margin:0}
 button{font:600 16px "Space Grotesk";padding:12px 16px;border-radius:14px;border:0;background:var(--cream);color:var(--navy);cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 button.secondary{background:transparent;color:var(--cream);border:2px solid rgba(253,240,213,.5)}
-.small{opacity:.75;font-size:12px}
+button.danger{background:#f25757;color:white}
+button.ghost{background:transparent;border:1px dashed rgba(255,255,255,.35);color:var(--cream)}
+button:active{transform:translateY(1px)}
+.small{opacity:.8;font-size:12px}
 .badge{display:inline-flex;gap:8px;align-items:center;font-weight:600;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}
 .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(6px);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .row{display:flex;gap:12px;flex-wrap:wrap}
@@ -28,17 +38,27 @@ button.secondary{background:transparent;color:var(--cream);border:2px solid rgba
 .pill{padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font-weight:600}
 .hr{height:1px;border:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.24),transparent)}
 .hidden{display:none}
-.scene{min-height:70dvh;position:relative}
+.scene{min-height:72dvh;position:relative}
 .hud{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.meters{display:grid;gap:12px}
-.mini{width:min(820px,96vw);height:180px;border-radius:16px;background:#0e2a26;border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden}
+
+/* Minimap / overhead */
+.mini{width:min(920px,96vw);height:200px;border-radius:16px;background:#0e2a26;border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden}
 .mini canvas{width:100%;height:100%}
-.meter{width:min(820px,96vw);height:140px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden}
+
+/* Meters */
+.meters{display:grid;gap:12px;width:min(920px,96vw)}
+.meter{height:150px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);position:relative;overflow:hidden}
 .meter canvas{width:100%;height:100%}
+.meter .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;pointer-events:none}
+.meter .cta{position:absolute;inset:auto 12px 12px auto}
+.key{display:flex;gap:8px;align-items:center}
+.dot{width:10px;height:10px;border-radius:50%;background:#fff;display:inline-block;border:1px solid rgba(0,0,0,.35)}
+
+/* Toast */
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 16px;border-radius:12px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18)}
-.leader{width:100%;border-collapse:collapse}
-.leader th,.leader td{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
-.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;padding:6px 10px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14)}
+
+/* Help hint */
+.hint{position:absolute;inset:auto 12px 12px 12px;text-align:center;font-weight:600;opacity:.9}
 </style>
 </head>
 <body>
@@ -52,9 +72,7 @@ button.secondary{background:transparent;color:var(--cream);border:2px solid rgba
 <div id="toast" class="toast hidden"></div>
 
 <script>
-/* ============================
-   Tiny SFX stubs (swap later)
-   ============================ */
+/* ================== Audio stubs ================== */
 const SFX = {
   hit: new Howl({src:[],volume:.5}),
   splash: new Howl({src:[],volume:.5}),
@@ -62,68 +80,60 @@ const SFX = {
   cup: new Howl({src:[],volume:.6})
 };
 
-/* ============================
-   Helpers
-   ============================ */
-const $ = (s, r=document)=>r.querySelector(s);
-const choice = a => a[Math.floor(Math.random()*a.length)];
-const clamp = (v,min,max)=>Math.min(max,Math.max(min,v));
+/* ================== Helpers ================== */
+const $ = (s,r=document)=>r.querySelector(s);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const choice=a=>a[Math.floor(Math.random()*a.length)];
+const lerp=(a,b,t)=>a+(b-a)*t;
 
-/* ============================
-   State
-   ============================ */
+/* ================== State ================== */
 const STATE = {
-  distYds: 409,          // remaining distance in yards (tee to green). On green we flip to feet (distFt flag).
-  onGreen: false,
-  distFt: 0,
-  shots: 0,
-  penalties: 0,
-  path: [{x:0.05,y:0.72}],   // normalized points on minimap; start near tee
-  finished:false
+  distYds:409, onGreen:false, distFt:0,
+  shots:0, penalties:0, finished:false, pickedUp:false,
+  path:[{x:0.05,y:0.62}], // normalized (0..1) for minimap
+  _history:[]
 };
 
-// clubs
 const CLUBS = {
-  driver:    {id:'driver', name:"The Big Dog", kind:"aggr", max:260, perf:0.08, anglePenalty:0.20, speed:1.6, copy:"Let it fly."},
-  drivingIr: {id:'drivingIr',name:"The Fairway Finder", kind:"safe", max:210, perf:0.16, anglePenalty:0.02, speed:1.2, copy:"Short grass energy."},
-  wood3:     {id:'wood3',   name:"The Long Shot", kind:"aggr", max:235, perf:0.08, anglePenalty:0.20, speed:1.4, copy:"Get it dancing."},
-  iron5:     {id:'iron5',   name:"The Layup", kind:"safe", max:190, perf:0.16, anglePenalty:0.02, speed:1.1, copy:"Smart is sexy."},
-  iron6:     {id:'iron6',   name:"The Nudge", kind:"aggr", max:170, perf:0.10, anglePenalty:0.20, speed:1.3, copy:"Thread it."},
-  iron8:     {id:'iron8',   name:"The Cozy One", kind:"safe", max:135, perf:0.18, anglePenalty:0.02, speed:1.0, copy:"Pin-high vibes."},
-  pw:        {id:'pw',      name:"The Flighted Wedge", kind:"aggr", max:115, perf:0.12, anglePenalty:0.20, speed:1.0, copy:"Send it soft."},
-  lw60:      {id:'lw60',    name:"The Float", kind:"safe", max:90,  perf:0.20, anglePenalty:0.02, speed:0.9, copy:"Up. Down. Close."},
-  putter:    {id:'putter',  name:"Putter", kind:"putt", max:60,  perf:0.40, anglePenalty:0, speed:0.7, copy:"Walk it in."}
+  // Slower meters overall; Safe clubs get bigger perfect windows + slower speed.
+  driver:    {id:"driver",   name:"The Big Dog",       kind:"aggr", max:260, perf:0.08, anglePenalty:0.22, spdA:0.012, spdP:0.010, copy:"Let it fly."},
+  drivingIr: {id:"drivingIr",name:"The Fairway Finder",kind:"safe", max:210, perf:0.22, anglePenalty:0.01, spdA:0.008, spdP:0.007, copy:"Short grass energy."},
+  wood3:     {id:"wood3",    name:"The Long Shot",     kind:"aggr", max:235, perf:0.10, anglePenalty:0.20, spdA:0.011, spdP:0.009, copy:"Get it dancing."},
+  iron5:     {id:"iron5",    name:"The Layup",         kind:"safe", max:190, perf:0.24, anglePenalty:0.01, spdA:0.008, spdP:0.007, copy:"Smart is sexy."},
+  iron6:     {id:"iron6",    name:"The Nudge",         kind:"aggr", max:170, perf:0.12, anglePenalty:0.18, spdA:0.010, spdP:0.008, copy:"Thread it."},
+  iron8:     {id:"iron8",    name:"The Cozy One",      kind:"safe", max:135, perf:0.26, anglePenalty:0.01, spdA:0.007, spdP:0.006, copy:"Pin-high vibes."},
+  pw:        {id:"pw",       name:"The Flighted Wedge",kind:"aggr", max:115, perf:0.14, anglePenalty:0.16, spdA:0.009, spdP:0.007, copy:"Send it soft."},
+  lw60:      {id:"lw60",     name:"The Float",         kind:"safe", max:90,  perf:0.28, anglePenalty:0.01, spdA:0.007, spdP:0.006, copy:"Up. Down. Close."},
+  putter:    {id:"putter",   name:"Putter",            kind:"putt", max:60,  perf:0.45, anglePenalty:0,    spdA:0.000, spdP:0.005, copy:"Walk it in."}
 };
 
 const COMMENTARY = {
-  fairway:["Striped it.","Center-cut.","Right where the rollers live."],
-  rough:["Found the long stuff, still very playable.","Fluffy lie incoming.","Could be worse."],
-  trees:["Pine-cone collector.","90% air, 10% character building."],
+  fairway:["Striped it.","Center-cut.","Rolling nice."],
+  rough:["Found the long stuff, still playable.","Fluffy lie incoming."],
+  trees:["Pine-cone collector.","90% air, 10% character."],
   water:["Nice day for a swim.","Splashy detour."],
   sand:["Beach break.","Sandy toes, steady pose."],
   green:["On the dance floor.","Showtime."],
   cup:["Walked it in.","Dead center."]
 };
 
-/* ============================
-   Scene: Title
-   ============================ */
 const scene = $("#scene");
 const toast = $("#toast");
 function showToast(txt,ms=1500){ toast.textContent=txt; toast.classList.remove("hidden"); clearTimeout(showToast._t); showToast._t=setTimeout(()=>toast.classList.add("hidden"),ms); }
 
 function resetState(){
-  STATE.distYds = 409; STATE.onGreen=false; STATE.distFt=0;
-  STATE.shots=0; STATE.penalties=0; STATE.finished=false;
-  STATE.path=[{x:0.05,y:0.72}];
+  STATE.distYds=409; STATE.onGreen=false; STATE.distFt=0;
+  STATE.shots=0; STATE.penalties=0; STATE.finished=false; STATE.pickedUp=false;
+  STATE.path=[{x:0.05,y:0.62}]; STATE._history=[];
 }
 
+/* ================== Title & Leaderboard ================== */
 function sceneTitle(){
   scene.innerHTML = `
-    <div class="card stack" style="padding:22px;max-width:860px">
+    <div class="card stack" style="padding:22px;max-width:900px">
       <div class="badge">Bogey Hound · 18th · 409 yds</div>
       <h1>The sun is down,<br/>the vibes are up.<br/>Let’s walk it in.</h1>
-      <p class="small">Two decisions. Smooth meters. Sunset pace.</p>
+      <p class="small">Power first. Angle second. Then enjoy the walk.</p>
       <div class="row">
         <button id="start">Start</button>
         <button class="secondary" id="lb">Leaderboard</button>
@@ -132,10 +142,25 @@ function sceneTitle(){
   $("#start").onclick=()=>{ resetState(); sceneClubSelect(); };
   $("#lb").onclick=sceneLeaderboard;
 }
+const LB_KEY="bh_walkin_lb_v3";
+function loadLB(){ try{return JSON.parse(localStorage.getItem(LB_KEY)||"[]")}catch(e){return[]} }
+function saveLB(i,s,tag){ const lb=loadLB(); lb.push({i,s,tag,t:Date.now()}); lb.sort((a,b)=>a.s-b.s||a.t-b.t); localStorage.setItem(LB_KEY,JSON.stringify(lb.slice(0,10))); }
+function sceneLeaderboard(){
+  const lb=loadLB();
+  const rows = lb.map((r,i)=>`<tr><td>${i+1}</td><td>${r.i}</td><td>${r.s}</td><td>${r.tag||""}</td><td>${new Date(r.t).toLocaleDateString()}</td></tr>`).join("") || `<tr><td colspan="5" class="small">No scores yet.</td></tr>`;
+  scene.innerHTML=`
+    <div class="card stack" style="padding:22px;max-width:760px">
+      <h2>Leaderboard</h2>
+      <table class="leader" style="width:100%;border-collapse:collapse">
+        <thead><tr><th>#</th><th>Initials</th><th>Score</th><th>Note</th><th>Date</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="row"><button class="secondary" id="back">Back</button></div>
+    </div>`;
+  $("#back").onclick=sceneTitle;
+}
 
-/* ============================
-   Minimap (overhead top-down)
-   ============================ */
+/* ================== Minimap / Overhead ================== */
 function drawMini(canvas, zoomGreen=false){
   const dpr = Math.max(1, Math.floor(window.devicePixelRatio||1));
   const bb = canvas.getBoundingClientRect();
@@ -148,95 +173,82 @@ function drawMini(canvas, zoomGreen=false){
   ctx.fillStyle="#0e2a26";
   ctx.fillRect(0,0,bb.width,bb.height);
 
-  // course silhouette
-  // tee left, green right; beach/water top-right; trees top-left
-  // draw fairway
-  ctx.fillStyle="#245e4f";
-  roundRect(ctx, bb.width*0.05, bb.height*0.45, bb.width*0.9, bb.height*0.22, 28,true);
-  // rough margins
-  ctx.strokeStyle="rgba(255,255,255,.06)";
-  ctx.lineWidth=2; ctx.strokeRect(bb.width*0.04, bb.height*0.42, bb.width*0.92, bb.height*0.28);
+  // ROUGH left/right
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--rough');
+  roundRect(ctx, bb.width*0.02, bb.height*0.34, bb.width*0.96, bb.height*0.44, 28, true);
 
-  // water & beach
-  ctx.fillStyle="#1e587a"; ctx.beginPath();
-  ctx.ellipse(bb.width*0.82, bb.height*0.42, bb.width*0.18, bb.height*0.22, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle="#c8b392"; ctx.beginPath();
-  ctx.ellipse(bb.width*0.78, bb.height*0.58, bb.width*0.22, bb.height*0.10, 0, 0, Math.PI*2); ctx.fill();
+  // FAIRWAY stripe
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--fair');
+  roundRect(ctx, bb.width*0.06, bb.height*0.40, bb.width*0.88, bb.height*0.32, 26, true);
 
-  // bunker & green
-  const greenCx = bb.width*0.88, greenCy = bb.height*0.56, greenRx = bb.width*0.08, greenRy = bb.height*0.06;
-  ctx.fillStyle="#2f7a63"; ctx.beginPath();
-  ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle="#dcc5a8"; ctx.beginPath();
-  ctx.ellipse(greenCx- greenRx*0.3, greenCy+greenRy*0.2, greenRx*0.35, greenRy*0.25, 0, 0, Math.PI*2); ctx.fill();
+  // TREES (left curtain)
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--tree');
+  ctx.fillRect(0, bb.height*0.18, bb.width*0.20, bb.height*0.64);
+  ctx.fillStyle="rgba(255,255,255,.06)";
+  for(let i=0;i<14;i++){
+    const x=bb.width*0.02 + i*bb.width*0.012;
+    ctx.fillRect(x, bb.height*0.18, 6, bb.height*0.64);
+  }
 
-  // flag (hole is at greenCx+greenRx*0.3, greenCy)
-  const holeX = greenCx+greenRx*0.3, holeY = greenCy;
-  ctx.strokeStyle="#fff"; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
-  ctx.fillStyle="#C1121F"; ctx.beginPath();
-  ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
+  // WATER (right)
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--water');
+  ctx.beginPath();
+  ctx.ellipse(bb.width*0.90, bb.height*0.50, bb.width*0.16, bb.height*0.26, 0, 0, Math.PI*2); ctx.fill();
 
-  // build path coords in pixel space
-  const points = STATE.path.map(p=>({
-    x: lerp(0, bb.width, p.x),
-    y: lerp(0, bb.height, p.y)
-  }));
+  // BEACH ribbon along water edge
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--sand');
+  ctx.beginPath();
+  ctx.ellipse(bb.width*0.86, bb.height*0.64, bb.width*0.20, bb.height*0.10, 0, 0, Math.PI*2); ctx.fill();
 
-  // zoom green if STATE.onGreen or explicit
+  // GREEN + bunker
+  const greenCx = bb.width*0.90, greenCy = bb.height*0.56, greenRx = bb.width*0.08, greenRy = bb.height*0.06;
+  ctx.fillStyle="#2f7a63"; ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--sand'); ctx.beginPath();
+  ctx.ellipse(greenCx- greenRx*0.35, greenCy+greenRy*0.15, greenRx*0.35, greenRy*0.25, 0, 0, Math.PI*2); ctx.fill();
+
+  // flag / cup
+  const holeX = greenCx+greenRx*0.28, holeY = greenCy;
+  ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--red');
+  ctx.beginPath(); ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
+
+  // Build path pixels
+  const points = STATE.path.map(p=>({x:lerp(0,bb.width,p.x), y:lerp(0,bb.height,p.y)}));
+
+  // Zoomed green view when putting
   if(zoomGreen || STATE.onGreen){
-    // transform so that green occupies canvas
-    const pad=14;
+    const pad=12;
     const gx = greenCx-greenRx-pad, gy = greenCy-greenRy-pad, gw = greenRx*2+pad*2, gh = greenRy*2+pad*2;
     ctx.save();
     ctx.clearRect(0,0,bb.width,bb.height);
     ctx.fillStyle="#0e2a26"; ctx.fillRect(0,0,bb.width,bb.height);
+    const sx = bb.width/gw, sy = bb.height/gh, s=Math.min(sx,sy);
+    ctx.translate(-gx*s, -gy*s); ctx.scale(s,s);
 
-    // scale+translate
-    const sx = bb.width/gw, sy = bb.height/gh, s = Math.min(sx,sy);
-    ctx.translate(-gx*s, -gy*s);
-    ctx.scale(s,s);
-
-    // redraw green region only
+    // redraw green only
     ctx.fillStyle="#2f7a63"; ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle="#dcc5a8"; ctx.beginPath(); ctx.ellipse(greenCx- greenRx*0.3, greenCy+greenRy*0.2, greenRx*0.35, greenRy*0.25, 0, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle="#fff"; ctx.lineWidth=2/s;
-    ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
-    ctx.fillStyle="#C1121F"; ctx.beginPath(); ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--sand'); ctx.beginPath();
+    ctx.ellipse(greenCx- greenRx*0.35, greenCy+greenRy*0.15, greenRx*0.35, greenRy*0.25, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle="#fff"; ctx.lineWidth=2/s; ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
+    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--red'); ctx.beginPath();
+    ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
 
-    // draw traced path within zoomed area
-    const zPts = points.map(pt=>({x:pt.x, y:pt.y}));
+    // trace
     ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.lineWidth=2/s; ctx.beginPath();
-    for(let i=0;i<zPts.length;i++){ const p=zPts[i]; i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
-    ctx.stroke();
-    // current ball
-    const last=zPts[zPts.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4/s,0,Math.PI*2); ctx.fill();
+    points.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
+    const last=points[points.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4/s,0,Math.PI*2); ctx.fill();
     ctx.restore();
     return;
   }
 
-  // full path in wide view
-  ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.lineWidth=2; ctx.beginPath();
-  for(let i=0;i<points.length;i++){ const p=points[i]; i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
-  ctx.stroke();
+  // Full trace
+  ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=2; ctx.beginPath();
+  points.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
   const last=points[points.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4,0,Math.PI*2); ctx.fill();
 }
+function roundRect(ctx,x,y,w,h,r,fill=true){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); fill?ctx.fill():ctx.stroke(); }
 
-function roundRect(ctx,x,y,w,h,r,fill=true){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);
-  ctx.arcTo(x,y,x+w,y,r);
-  ctx.closePath();
-  if(fill) ctx.fill(); else ctx.stroke();
-}
-const lerp=(a,b,t)=>a+(b-a)*t;
-
-/* ============================
-   Club selection
-   ============================ */
+/* ================== Club selection ================== */
 function clubOptionsByDist(){
   const d=STATE.distYds;
   if(STATE.onGreen) return [{key:"putter",data:CLUBS.putter}];
@@ -248,20 +260,28 @@ function clubOptionsByDist(){
 
 function sceneClubSelect(){
   scene.innerHTML="";
-  const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="920px";
+  const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="940px";
 
   // Minimap
   const mini = document.createElement("div"); mini.className="mini"; mini.innerHTML=`<canvas id="mini"></canvas>`;
   wrap.appendChild(mini);
   scene.appendChild(wrap);
-  drawMini($("#mini"));
+  drawMini($("#mini"), STATE.onGreen);
 
-  // Card with clubs
+  // Card with clubs + pick-up option
   const card=document.createElement("div"); card.className="card stack"; card.style.padding="18px";
   const distLabel = STATE.onGreen ? `${Math.round(STATE.distFt)} ft` : `${Math.round(STATE.distYds)} yds`;
   card.innerHTML = `
-    <div class="hud"><div class="pill">${STATE.onGreen?"Putt":"Pick your pace"}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div></div>
+    <div class="hud">
+      <div class="pill">${STATE.onGreen?"Putt":"Pick your pace"}</div>
+      <div class="pill">Distance: ${distLabel}</div>
+      <div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>
+    </div>
     <div class="row" id="clubRow"></div>
+    <div class="row" style="justify-content:space-between;margin-top:6px">
+      <button class="ghost" id="pickup">Pick up (end hole)</button>
+      <div class="small">Tip: Power first, then angle.</div>
+    </div>
   `;
   wrap.appendChild(card);
 
@@ -274,253 +294,253 @@ function sceneClubSelect(){
       <div class="small">${data.copy}</div>
       <div class="row"><div class="pill">Max ${STATE.onGreen?Math.round(data.max)+" ft":Math.round(data.max)+" yds"}</div><div class="pill">Perfect ~${Math.round(data.perf*100)}%</div></div>
       <button>Use ${data.name}</button>`;
-    $("button",c).onclick=()=>sceneSwing(key,data);
+    $("button",c).onclick=()=>sceneSwingPowerFirst(key,data);
     row.appendChild(c);
   });
+
+  $("#pickup").onclick=finishPickup;
 }
 
-/* ============================
-   Swing meters
-   ============================ */
-function sceneSwing(key, club){
+/* ================== Swing: POWER → then ANGLE ================== */
+function sceneSwingPowerFirst(key, club){
   scene.innerHTML="";
-  const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="920px";
+  const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="940px";
 
-  // Minimap (zoom on green)
+  // Minimap
   const mini = document.createElement("div"); mini.className="mini"; mini.innerHTML=`<canvas id="mini"></canvas>`;
   wrap.appendChild(mini);
   scene.appendChild(wrap);
   drawMini($("#mini"), STATE.onGreen);
 
-  // Angle meter (not for putting)
-  const meters=document.createElement("div"); meters.className="meters";
+  // Header
   const distLabel = STATE.onGreen ? `${Math.round(STATE.distFt)} ft` : `${Math.round(STATE.distYds)} yds`;
-  const header = document.createElement("div");
-  header.className="hud";
-  header.innerHTML = `<div class="pill">${club.kind==="putt"?"Putter":"Swing · "+club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
-  wrap.appendChild(header);
+  const head=document.createElement("div");
+  head.className="hud";
+  head.innerHTML=`<div class="pill">1/2 – Select POWER · ${club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
+  wrap.appendChild(head);
 
-  let needAngle = club.kind!=="putt";
-  let angleVal = 0.5; // default straight
-  let powerVal = 0;   // 0..1
-  let raf;
+  // POWER meter
+  const box=document.createElement("div"); box.className="meter"; box.innerHTML=`<canvas id="power"></canvas><div class="overlay"><div class="key"><span class="dot"></span><span id="powLabel">0 yds</span></div><div class="key"><span class="dot" style="background:var(--red)"></span><span>Ideal zone</span></div></div><div class="hint small">Tap the meter or press “Lock Power” when your number looks right.</div>`;
+  wrap.appendChild(box);
 
-  // ANGLE
-  let angleBox, angleCtx;
-  if(needAngle){
-    angleBox=document.createElement("div"); angleBox.className="meter"; angleBox.innerHTML=`<canvas id="angle"></canvas>`;
-    meters.appendChild(angleBox);
-  }
-
-  // POWER
-  const powerBox=document.createElement("div"); powerBox.className="meter"; powerBox.innerHTML=`<canvas id="power"></canvas>`;
-  meters.appendChild(powerBox);
-  wrap.appendChild(meters);
-
-  // Controls
   const ctrls=document.createElement("div"); ctrls.className="row";
-  ctrls.innerHTML = `<button class="secondary" id="back">Back</button>
-                     ${needAngle?`<button id="lock">Lock Angle</button>`:""}
-                     <button id="hit" ${needAngle?"disabled":""}>Hit</button>`;
-  wrap.appendChild(ctrls);
+  ctrls.innerHTML=`<button class="secondary" id="back">Back</button><button id="lockP">Lock Power</button>`;
+  wrap.appendChild(ctrlls);
 
-  // Canvas setup
-  let aCVS = needAngle?$("#angle"):null;
-  let pCVS = $("#power");
-  const dpr = Math.max(1,Math.floor(window.devicePixelRatio||1));
-  function fit(cv){ const bb=cv.getBoundingClientRect(); cv.width=Math.floor(bb.width*dpr); cv.height=Math.floor(bb.height*dpr); return cv.getContext("2d"); }
-  if(needAngle){ angleCtx=fit(aCVS); }
-  const powerCtx=fit(pCVS);
+  $("#back").onclick=sceneClubSelect;
 
-  // Anim params
-  let cursorA=0, dirA=1, cursorP=0, dirP=1;
-  const speedA = club.speed * 0.018;
-  const speedP = (club.kind==="putt"? club.speed*0.010 : club.speed*0.014);
+  // Canvas sizing
+  const pCVS=$("#power"); const dpr=Math.max(1,Math.floor(window.devicePixelRatio||1));
+  const fit=(cv)=>{ const bb=cv.getBoundingClientRect(); cv.width=Math.floor(bb.width*dpr); cv.height=Math.floor(bb.height*dpr); return cv.getContext("2d"); }
+  const ctx=fit(pCVS);
 
-  // Dynamic ideal band for POWER centered on required power
+  // Anim
+  let cursorP=0, dirP=1, raf;
+  const spdP = club.spdP; // slowed globally + safer clubs slower
+  const unit = STATE.onGreen ? "ft" : "yds";
+
+  // Dynamic ideal center and width (clearer numbers)
   function requiredPower(){
     if(STATE.onGreen){
-      const targetFt = clamp(STATE.distFt, 2, club.max); // ft
-      return clamp(targetFt / club.max, 0, 1);
+      const targetFt = clamp(STATE.distFt, 2, club.max);
+      return clamp(targetFt/club.max, 0, 1);
     } else {
-      // approximate lie attenuation from last outcome
-      const last = lastOutcome();
-      let lie = 1;
-      if(last==="trees") lie=0.5;
-      else if(last==="roughL"||last==="roughR"||last==="sand") lie=0.9;
-      const neededYds = clamp(STATE.distYds, 1, club.max*1.05);
+      let lie=1; const prev = lastOutcome();
+      if(prev==="trees") lie=0.5;
+      else if(prev==="roughL"||prev==="roughR"||prev==="sand") lie=0.9;
+      const needed = clamp(STATE.distYds, 1, club.max*1.05);
       const effMax = club.max * lie;
-      return clamp(neededYds / Math.max(1, effMax), 0, 1);
+      return clamp(needed/Math.max(1,effMax), 0, 1);
     }
   }
   function idealBandWidth(){
-    // wider band when closer to target (we help the user), also safer clubs have wider band
-    const base = club.kind==="putt" ? 0.28 : (club.kind==="safe"?0.22:0.14);
     if(STATE.onGreen){
-      const ft = STATE.distFt;
-      if(ft<=8) return Math.max(base, 0.40);
-      if(ft<=15) return Math.max(base, 0.30);
-      if(ft<=30) return Math.max(base, 0.22);
-      return Math.max(base, 0.18);
+      const ft=STATE.distFt;
+      if(ft<=8) return 0.45;
+      if(ft<=15) return 0.35;
+      if(ft<=30) return 0.28;
+      return 0.22;
     }
-    return base;
+    return club.kind==="safe"?0.30:0.18;
   }
 
-  // draw angle
-  function drawAngle(){
-    if(!needAngle) return;
-    const bb=aCVS.getBoundingClientRect();
-    angleCtx.setTransform(1,0,0,1,0,0);
-    angleCtx.scale(dpr,dpr);
-    angleCtx.clearRect(0,0,bb.width,bb.height);
-    // rail
-    angleCtx.fillStyle="rgba(255,255,255,.08)";
-    angleCtx.fillRect(bb.width*.06, bb.height*.46, bb.width*.88, bb.height*.08);
-    // perfect zone (centered)
-    const perf=club.perf;
-    const pw = bb.width*.88*perf;
-    const px = bb.width*.06 + bb.width*.88*0.5 - pw/2;
-    angleCtx.fillStyle="rgba(212,61,61,.25)";
-    angleCtx.fillRect(px, bb.height*.46, pw, bb.height*.08);
-    // penalty zones
-    if(club.anglePenalty>0){
-      angleCtx.fillStyle="rgba(255,255,255,.10)";
-      angleCtx.fillRect(bb.width*.06, bb.height*.46, bb.width*.88*club.anglePenalty, bb.height*.08);
-      angleCtx.fillRect(bb.width*(.94 - .88*club.anglePenalty), bb.height*.46, bb.width*.88*club.anglePenalty, bb.height*.08);
-    }
-    // cursor
-    const cx = bb.width*.06 + cursorA*bb.width*.88;
-    angleCtx.fillStyle="#fff"; angleCtx.fillRect(cx-4, bb.height*.42, 8, bb.height*.16);
-  }
-
-  // draw power with dynamic ideal band
   function drawPower(){
     const bb=pCVS.getBoundingClientRect();
-    powerCtx.setTransform(1,0,0,1,0,0);
-    powerCtx.scale(dpr,dpr);
-    powerCtx.clearRect(0,0,bb.width,bb.height);
-    // rail
-    powerCtx.fillStyle="rgba(255,255,255,.08)";
-    powerCtx.fillRect(bb.width*.06, bb.height*.12, bb.width*.88, bb.height*.76);
+    ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,bb.width,bb.height);
 
-    // ticks & labels
-    powerCtx.fillStyle="rgba(255,255,255,.35)";
-    powerCtx.font="bold 24px 'Space Grotesk'";
-    powerCtx.textAlign="right";
-    const unit = STATE.onGreen? "ft":"yds";
+    // rail
+    ctx.fillStyle="rgba(255,255,255,.09)";
+    ctx.fillRect(bb.width*.08, bb.height*.12, bb.width*.84, bb.height*.76);
+
+    // ticks + labels (big & obvious)
+    ctx.fillStyle="rgba(255,255,255,.45)";
+    ctx.textAlign="right"; ctx.font="600 20px 'Space Grotesk'";
     const maxMark = STATE.onGreen? club.max : club.max;
-    for(let i=0;i<=4;i++){
-      const y = bb.height*.88 - (bb.height*.76)*(i/4);
-      powerCtx.fillRect(bb.width*.06, y, bb.width*.88, 2);
-      powerCtx.fillText(Math.round(maxMark*i/4)+" "+unit, bb.width*.05, y+9);
+    for(let i=0;i<=6;i++){
+      const y = bb.height*.88 - (bb.height*.76)*(i/6);
+      ctx.fillRect(bb.width*.08, y, bb.width*.84, 2);
+      const val = Math.round(maxMark*i/6);
+      ctx.fillText(val+" "+unit, bb.width*.075, y+7);
     }
 
-    // dynamic ideal band
-    const ideal = requiredPower();       // 0..1
-    const band = idealBandWidth();       // width (0..1)
-    const ph = bb.height*.76 * band;
+    // ideal band
+    const ideal=requiredPower(), band=idealBandWidth();
+    const ph = bb.height*.76*band;
     const centerY = bb.height*.88 - (bb.height*.76)*ideal;
     const py = clamp(centerY - ph/2, bb.height*.12, bb.height*.88-ph);
-    powerCtx.fillStyle="rgba(212,61,61,.28)";
-    powerCtx.fillRect(bb.width*.06, py, bb.width*.88, ph);
+    ctx.fillStyle="rgba(212,61,61,.30)";
+    ctx.fillRect(bb.width*.08, py, bb.width*.84, ph);
 
-    // cursor
+    // cursor box
     const cy = bb.height*.88 - cursorP*(bb.height*.76);
-    powerCtx.fillStyle="#fff"; powerCtx.fillRect(bb.width*.5-6, cy-6, 12, 12);
+    ctx.fillStyle="#fff"; ctx.fillRect(bb.width*.50-8, cy-8, 16, 16);
+
+    // current numeric power readout
+    const current = Math.round((STATE.onGreen?club.max:club.max) * cursorP);
+    $("#powLabel").textContent = current+" "+unit;
   }
 
-  function tick(){
-    if(needAngle){
-      cursorA += speedA*dirA; if(cursorA>1){cursorA=1;dirA=-1} if(cursorA<0){cursorA=0;dirA=1}
-      drawAngle();
-    }
-    cursorP += speedP*dirP; if(cursorP>1){cursorP=1;dirP=-1} if(cursorP<0){cursorP=0;dirP=1}
-    drawPower();
-    raf=requestAnimationFrame(tick);
-  }
+  function tick(){ cursorP += spdP*dirP; if(cursorP>1){cursorP=1;dirP=-1} if(cursorP<0){cursorP=0;dirP=1} drawPower(); raf=requestAnimationFrame(tick); }
   tick();
 
-  $("#back").onclick=()=>{ cancelAnimationFrame(raf); sceneClubSelect(); };
-  if(needAngle){
-    $("#lock").onclick=()=>{ angleVal=cursorA; $("#lock").disabled=true; $("#hit").disabled=false; };
-  }
-  $("#hit").onclick=()=>{
+  // Interactions
+  pCVS.addEventListener("click", ()=>{ lockPower(cursorP) });
+  $("#lockP").onclick=()=>lockPower(cursorP);
+
+  function lockPower(val){
     cancelAnimationFrame(raf);
-    angleVal = needAngle ? angleVal : 0.5;
-    powerVal = cursorP;
-    resolveSwing(club, angleVal, powerVal);
-  };
+    sceneSwingAngleSecond(key, club, clamp(val,0,1)); // proceed to angle
+  }
 }
 
-function lastOutcome(){
-  const h=STATE._history||[];
-  return h.length? h[h.length-1].outcome : null;
+/* ANGLE second */
+function sceneSwingAngleSecond(key, club, powerVal){
+  scene.innerHTML="";
+  const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="940px";
+
+  // Minimap
+  const mini = document.createElement("div"); mini.className="mini"; mini.innerHTML=`<canvas id="mini"></canvas>`;
+  wrap.appendChild(mini);
+  scene.appendChild(wrap);
+  drawMini($("#mini"), STATE.onGreen);
+
+  const distLabel = STATE.onGreen ? `${Math.round(STATE.distFt)} ft` : `${Math.round(STATE.distYds)} yds`;
+  const head=document.createElement("div");
+  head.className="hud";
+  head.innerHTML=`<div class="pill">2/2 – Select ANGLE · ${club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
+  wrap.appendChild(head);
+
+  const box=document.createElement("div"); box.className="meter"; box.innerHTML=`<canvas id="angle"></canvas><div class="overlay"><div class="key"><span class="dot" style="background:var(--red)"></span><span>Perfect zone</span></div><div class="key"><span class="dot" style="background:#bbb"></span><span>Hazard zones</span></div></div><div class="hint small">Tap the meter or press “Lock Angle” when you like your line.</div>`;
+  wrap.appendChild(box);
+
+  const ctrls=document.createElement("div"); ctrls.className="row";
+  ctrls.innerHTML=`<button class="secondary" id="back">Back</button><button id="lockA">Lock Angle</button><button id="hit" class="danger">Hit Shot</button>`;
+  wrap.appendChild(ctrlls);
+
+  $("#back").onclick=sceneClubSelect;
+  $("#hit").disabled=true; // must lock angle once
+
+  // Canvas
+  const aCVS=$("#angle"); const dpr=Math.max(1,Math.floor(window.devicePixelRatio||1));
+  const fit=(cv)=>{ const bb=cv.getBoundingClientRect(); cv.width=Math.floor(bb.width*dpr); cv.height=Math.floor(bb.height*dpr); return cv.getContext("2d"); }
+  const ctx=fit(aCVS);
+
+  let cursorA=0.5, dirA=1, raf;
+  const spdA= club.spdA;
+
+  function drawAngle(){
+    const bb=aCVS.getBoundingClientRect();
+    ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,bb.width,bb.height);
+
+    // rail
+    ctx.fillStyle="rgba(255,255,255,.09)";
+    ctx.fillRect(bb.width*.08, bb.height*.46, bb.width*.84, bb.height*.08);
+
+    // perfect zone
+    const pw = bb.width*.84*club.perf;
+    const px = bb.width*.08 + bb.width*.84*0.5 - pw/2;
+    ctx.fillStyle="rgba(212,61,61,.30)";
+    ctx.fillRect(px, bb.height*.46, pw, bb.height*.08);
+
+    // hazard (anglePenalty) both sides
+    if(club.anglePenalty>0){
+      ctx.fillStyle="rgba(255,255,255,.14)";
+      ctx.fillRect(bb.width*.08, bb.height*.46, bb.width*.84*club.anglePenalty, bb.height*.08);
+      ctx.fillRect(bb.width*(.92 - .84*club.anglePenalty), bb.height*.46, bb.width*.84*club.anglePenalty, bb.height*.08);
+    }
+
+    // cursor
+    const cx = bb.width*.08 + cursorA*bb.width*.84;
+    ctx.fillStyle="#fff"; ctx.fillRect(cx-8, bb.height*.42, 16, bb.height*.16);
+  }
+  function tick(){ cursorA+=spdA*dirA; if(cursorA>1){cursorA=1;dirA=-1} if(cursorA<0){cursorA=0;dirA=1} drawAngle(); raf=requestAnimationFrame(tick); }
+  tick();
+
+  aCVS.addEventListener("click", ()=>lockAngle(cursorA));
+  $("#lockA").onclick=()=>lockAngle(cursorA);
+  function lockAngle(val){
+    cancelAnimationFrame(raf);
+    $("#hit").disabled=false;
+    $("#hit").onclick=()=>resolveSwing(club, clamp(val,0,1), powerVal);
+  }
 }
 
-/* ============================
-   Outcomes & physics-lite
-   ============================ */
+/* ================== Outcome logic ================== */
 const OUT = { TREES:"trees", ROUGH_L:"roughL", FAIRWAY:"fairway", ROUGH_R:"roughR", WATER:"water", SAND:"sand", GREEN:"green", CUP:"cup" };
+function lastOutcome(){ const h=STATE._history; return h.length? h[h.length-1].outcome : null; }
 
 function resolveSwing(club, angle, power){
-  // Count the stroke immediately (single source of truth)
+  // Count stroke immediately (single source of truth)
   STATE.shots++;
 
-  // determine lie penalty from last outcome
-  let lie=1;
-  const prev = lastOutcome();
-  if(prev===OUT.TREES) lie=0.5;
-  else if(prev===OUT.ROUGH_L||prev===OUT.ROUGH_R||prev===OUT.SAND) lie=0.9;
-  else if(prev===OUT.GREEN && club.kind!=="putt") lie=0.9;
-
-  // Putting – power only, generous make window; auto-aim straight.
+  // PUTTING — fix: ball must advance by hit distance
   if(club.kind==="putt" || STATE.onGreen){
+    STATE.onGreen = true;
     const target = clamp(STATE.distFt, 1, club.max); // feet
     const hitFt = clamp(Math.round(power * club.max), 0, club.max);
-    // tolerance widens dramatically inside 8 ft; modest beyond
-    let tol = 2; // feet
-    if(target<=6) tol = 3.5;
-    else if(target<=12) tol = 3;
-    else if(target<=20) tol = 2.5;
-    else if(target<=40) tol = 2;
+
+    // make window (easier)
+    let tol = 3.5;
+    if(target<=6) tol = 4.0;
+    else if(target<=12) tol = 3.5;
+    else if(target<=20) tol = 3.0;
+    else if(target<=40) tol = 2.5;
 
     if(Math.abs(hitFt - target) <= tol){
-      // holed
-      STATE.onGreen=true; STATE.distFt=0;
-      pushPathToGreen(); // move dot to hole
-      pushHistory(OUT.CUP, club.name);
-      SFX.cup.play();
-      return finishRound();
+      STATE.distFt=0; pushPathToCup(); pushHistory(OUT.CUP, club.name); SFX.cup.play(); return finishRound();
     } else {
-      // remaining feet
-      STATE.onGreen=true;
-      STATE.distFt = Math.max(1, Math.abs(target - hitFt));
-      pushPathTowardHole(hitFt / target); // draw along the green toward hole
+      // advance toward hole
+      const remaining = Math.max(1, Math.abs(target - hitFt));
+      const fraction = clamp(hitFt/target, 0, 0.98);
+      pushPathTowardHole(fraction);
+      STATE.distFt = remaining;
       pushHistory(OUT.GREEN, club.name);
       showToast(choice(COMMENTARY.green));
       return sceneClubSelect();
     }
   }
 
-  // Full shot
-  const effMax = club.max * lie;
-  let carry = clamp(power*effMax, 8, effMax); // ensure progress
+  // FULL SHOT
+  let lie=1; const prev=lastOutcome();
+  if(prev===OUT.TREES) lie=0.5;
+  else if(prev===OUT.ROUGH_L||prev===OUT.ROUGH_R||prev===OUT.SAND) lie=0.9;
+
+  const effMax = club.max*lie;
+  let carry = clamp(power*effMax, 10, effMax); // ensure progress
   const before = STATE.distYds;
   let after = Math.max(0, before - carry);
 
-  // lateral from angle (center 0.5). Used for minimap offset & hazards.
   const lateral = angle - 0.5;
-
-  // outcome
   let outcome = OUT.FAIRWAY;
 
-  // hazard windows (simple bands when >100 yds left)
+  // hazards (course spec: trees left, water right, rough both sides)
   if(before>100){
     const pen = (angle < club.anglePenalty) || (angle > 1 - club.anglePenalty);
-    if(pen){ outcome = lateral>0 ? OUT.WATER : OUT.TREES; }
+    if(pen) outcome = lateral>0 ? OUT.WATER : OUT.TREES;
   }
 
-  // near green classification
   if(after<=60 && outcome===OUT.FAIRWAY){
     if(lateral>0.22) outcome = OUT.SAND;
     else if(Math.abs(lateral)<=0.18) outcome = OUT.GREEN;
@@ -530,27 +550,18 @@ function resolveSwing(club, angle, power){
     else outcome = (lateral<0)? OUT.ROUGH_L : OUT.ROUGH_R;
   }
 
-  // penalties
   if(outcome===OUT.WATER){
-    STATE.penalties++;
-    showToast(choice(COMMENTARY.water));
-    // place to rough right at same remaining distance band (small forgiveness)
-    outcome = OUT.ROUGH_R;
+    STATE.penalties++; showToast(choice(COMMENTARY.water)); SFX.splash.play();
+    outcome = OUT.ROUGH_R; // drop right rough
   }
 
-  // update distances / green flip
   if(outcome===OUT.GREEN){
-    STATE.onGreen=true;
-    STATE.distFt = Math.max(4, Math.round(after*3));
+    STATE.onGreen=true; STATE.distFt=Math.max(3, Math.round(after*3));
   } else {
-    STATE.onGreen=false;
-    STATE.distYds = Math.max(1, after);
+    STATE.onGreen=false; STATE.distYds=Math.max(1, after);
   }
 
-  // minimap point
   pushPathByCarry(carry/before, lateral);
-
-  // commentary & next
   let line = "";
   if(outcome===OUT.FAIRWAY) line=choice(COMMENTARY.fairway);
   else if(outcome===OUT.ROUGH_L||outcome===OUT.ROUGH_R) line=choice(COMMENTARY.rough);
@@ -559,73 +570,54 @@ function resolveSwing(club, angle, power){
   else if(outcome===OUT.GREEN) line=choice(COMMENTARY.green);
 
   pushHistory(outcome, club.name);
-  if(outcome===OUT.GREEN && STATE.distFt<=2){ // tap-in chance on very close (requires one more putt)
-    showToast("Inside two. Clean it up.");
-  } else if(line){ showToast(line); }
-
+  if(line) showToast(line);
   sceneClubSelect();
 }
 
-/* ============================
-   Path helpers for minimap
-   ============================ */
-function pushPathByCarry(progress, lateral){
-  // progress: 0..1 portion of remaining x toward hole
-  const last = STATE.path[STATE.path.length-1];
-  // hole anchor
-  const holeX=0.88+0.08*0.75, holeY=0.56; // near flag
-  const targetX=0.90, targetY=0.58;
-  // move along x to the right
-  const newX = clamp(last.x + progress*0.8, 0.05, 0.95);
-  // lateral sway scaled
-  const newY = clamp(last.y + lateral*0.6, 0.20, 0.80);
+/* ================== Path helpers ================== */
+function pushPathByCarry(progress,lateral){
+  const last=STATE.path[STATE.path.length-1];
+  const newX = clamp(last.x + progress*0.82, 0.04, 0.96);
+  const newY = clamp(last.y + lateral*0.60, 0.18, 0.82);
   STATE.path.push({x:newX, y:newY});
 }
-
-function pushPathTowardHole(fraction){
-  // On green: interpolate from current to hole by fraction of distance covered
-  const last = STATE.path[STATE.path.length-1];
-  const hole = {x:0.96, y:0.56};
-  const nx = clamp( lerp(last.x, hole.x, clamp(fraction,0,1)), 0.0, 1.0);
-  const ny = clamp( lerp(last.y, hole.y, clamp(fraction,0,1)), 0.0, 1.0);
-  STATE.path.push({x:nx,y:ny});
+function pushPathTowardHole(frac){
+  const last=STATE.path[STATE.path.length-1];
+  const hole={x:0.97,y:0.56};
+  STATE.path.push({x:lerp(last.x,hole.x,frac), y:lerp(last.y,hole.y,frac)});
 }
+function pushPathToCup(){ STATE.path.push({x:0.97,y:0.56}); }
 
-function pushPathToGreen(){
-  // snap to cup
-  STATE.path.push({x:0.96, y:0.56});
+/* ================== History & finish ================== */
+function pushHistory(outcome, club){ STATE._history.push({outcome,club,shots:STATE.shots,pen:STATE.penalties,onGreen:STATE.onGreen,distYds:STATE.distYds,distFt:STATE.distFt}); }
+
+function finishPickup(){
+  STATE.pickedUp = true;
+  // Score as “pick up” with par+2 (max bogey+1) unless already higher
+  const par=4; const minScore = par+2;
+  const strokes = Math.max(STATE.shots + STATE.penalties, minScore);
+  finishScreen(strokes, "Picked up");
 }
-
-/* ============================
-   History & scoring
-   ============================ */
-function pushHistory(outcome, clubName){
-  STATE._history = STATE._history||[];
-  STATE._history.push({outcome, club:clubName, shots:STATE.shots, pen:STATE.penalties, onGreen:STATE.onGreen, distYds:STATE.distYds, distFt:STATE.distFt});
-  if(outcome===OUT.CUP){ /* handled in finishRound */ }
-}
-
-/* ============================
-   Finish & leaderboard
-   ============================ */
-const LB_KEY="bh_walkin_lb_v2";
-function loadLB(){ try{return JSON.parse(localStorage.getItem(LB_KEY)||"[]")}catch(e){return[]} }
-function saveLB(i,s){ const lb=loadLB(); lb.push({i,s,t:Date.now()}); lb.sort((a,b)=>a.s-b.s||a.t-b.t); localStorage.setItem(LB_KEY,JSON.stringify(lb.slice(0,10))); }
 
 function finishRound(){
-  STATE.finished=true;
   const strokes = STATE.shots + STATE.penalties;
+  finishScreen(strokes, null);
+}
+
+function finishScreen(strokes, tag){
+  STATE.finished=true;
   const par=4, diff=strokes-par;
-  const label = diff<=-2?"Eagle":diff===-1?"Birdie":diff===0?"Par":diff===1?"Bogey":"+ "+diff;
+  const label = tag? tag : (diff<=-2?"Eagle":diff===-1?"Birdie":diff===0?"Par":diff===1?"Bogey":"+ "+diff);
 
   scene.innerHTML=`
-    <div class="card stack" style="padding:22px;max-width:860px">
+    <div class="card stack" style="padding:22px;max-width:900px">
       <div class="badge">Final</div>
       <h2>${strokes} • ${label}</h2>
       <div class="row"><div class="pill">Shots: ${STATE.shots}</div><div class="pill">Penalties: ${STATE.penalties}</div></div>
       <div class="row">
         <button id="again">Restart</button>
         <button class="secondary" id="store">Visit the store</button>
+        <button class="ghost" id="lb">Leaderboard</button>
       </div>
       <div class="row">
         <input id="init" maxlength="3" placeholder="ABC" style="padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:var(--cream)">
@@ -635,27 +627,11 @@ function finishRound(){
     </div>`;
   $("#again").onclick=sceneTitle;
   $("#store").onclick=()=>location.href="https://bogeyhound.com";
-  $("#save").onclick=()=>{ const i=($("#init").value||"__").toUpperCase().replace(/[^A-Z]/g,"").slice(0,3).padEnd(3,"_"); saveLB(i,strokes); $("#msg").textContent="Saved."; };
+  $("#lb").onclick=sceneLeaderboard;
+  $("#save").onclick=()=>{ const i=($("#init").value||"__").toUpperCase().replace(/[^A-Z]/g,"").slice(0,3).padEnd(3,"_"); saveLB(i,strokes, tag||""); $("#msg").textContent="Saved."; };
 }
 
-function sceneLeaderboard(){
-  const lb=loadLB();
-  const rows = lb.map((r,i)=>`<tr><td>${i+1}</td><td>${r.i}</td><td>${r.s}</td><td>${new Date(r.t).toLocaleDateString()}</td></tr>`).join("") || `<tr><td colspan="4" class="small">No scores yet.</td></tr>`;
-  scene.innerHTML=`
-    <div class="card stack" style="padding:22px;max-width:760px">
-      <h2>Leaderboard</h2>
-      <table class="leader">
-        <thead><tr><th>#</th><th>Initials</th><th>Score</th><th>Date</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <div class="row"><button class="secondary" id="back">Back</button></div>
-    </div>`;
-  $("#back").onclick=sceneTitle;
-}
-
-/* ============================
-   Boot
-   ============================ */
+/* ================== Boot ================== */
 sceneTitle();
 </script>
 </body>
