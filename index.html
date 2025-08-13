@@ -1,3 +1,14 @@
+Here’s a single-file replacement with:
+
+Single-tap putting (power only; distance-true make %).
+
+Slower pacing + vibes: pauses between shots, typed remarks, club reassurance, and slow arced ball flight with loft by club.
+
+Angle meter still shifts the ideal band toward the hole on full shots.
+
+
+Paste this over your file.
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -52,7 +63,7 @@ button.ghost{background:transparent;border:1px dashed rgba(255,255,255,.35);colo
   backdrop-filter:blur(6px);
 }
 #pickupFloating:hover{background:rgba(0,0,0,.55)}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 16px;border-radius:12px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 16px;border-radius:12px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18);max-width:min(92vw,720px)}
 </style>
 </head>
 <body>
@@ -76,7 +87,117 @@ const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const choice=a=>a[Math.floor(Math.random()*a.length)];
 const lerp=(a,b,t)=>a+(b-a)*t;
 const toast=$("#toast");
-function showToast(txt,ms=1500){ toast.textContent=txt; toast.classList.remove("hidden"); clearTimeout(showToast._t); showToast._t=setTimeout(()=>toast.classList.add("hidden"),ms); }
+function sleep(ms){ return new Promise(res=>setTimeout(res,ms)); }
+async function typeToast(txt, charMs=22, holdMs=800){
+  toast.textContent=""; toast.classList.remove("hidden");
+  for(const ch of txt){ toast.textContent+=ch; await sleep(charMs); }
+  await sleep(holdMs);
+  toast.classList.add("hidden");
+}
+
+/* ===== NEW: hole constant + putting/aim helpers + vibes/pacing ===== */
+const HOLE = { x:0.97, y:0.56 };
+
+const PACE = {
+  betweenShots: 900,     // idle gap after remarks
+  flightBase: 700,       // base flight duration
+  flightPerUnit: 1800,   // added per normalized distance
+  puttFlightMin: 450     // short roll for made/missed putts
+};
+
+// Approx PGA-Tour-ish make % by distance (ft). Linear interp between anchors.
+function pgaMakeProb(ft){
+  const T = [
+    [1,0.995],[2,0.990],[3,0.970],[4,0.910],[5,0.820],
+    [6,0.730],[7,0.640],[8,0.570],[9,0.520],[10,0.440],
+    [12,0.350],[15,0.300],[20,0.200],[25,0.150],[30,0.100],
+    [40,0.060],[50,0.040],[60,0.030]
+  ];
+  if(ft<=T[0][0]) return T[0][1];
+  if(ft>=T[T.length-1][0]) return T[T.length-1][1];
+  for(let i=0;i<T.length-1;i++){
+    const [x1,y1]=T[i], [x2,y2]=T[i+1];
+    if(ft>=x1 && ft<=x2){
+      const t=(ft-x1)/(x2-x1);
+      return y1+(y2-y1)*t;
+    }
+  }
+  return 0.05;
+}
+function puttPowerTolerance(ft){
+  if(ft<=4)  return 12;
+  if(ft<=8)  return 8;
+  if(ft<=12) return 6;
+  if(ft<=20) return 5;
+  if(ft<=30) return 4;
+  if(ft<=50) return 3;
+  return 2.5;
+}
+function puttLineWindow(ft){
+  const w = 0.28 - 0.0035*Math.min(ft,60);
+  return clamp(w, 0.06, 0.30);
+}
+function idealAngleCenter(isPutting=false){
+  const last = STATE.path[STATE.path.length-1];
+  const dy = HOLE.y - last.y;
+  const k = isPutting ? 0.9 : 0.7;
+  return clamp(0.5 + clamp(dy*k, -0.30, 0.30), 0.10, 0.90);
+}
+function loftFactor(clubId){
+  return {
+    driver:0.15, wood3:0.22, drivingIr:0.28,
+    iron5:0.35, iron6:0.42, iron8:0.55,
+    pw:0.65, lw60:0.75, putter:0.02
+  }[clubId] ?? 0.30;
+}
+const CLUB_REASSURE = {
+  driver:"Okay, let it rip.",
+  drivingIr:"Fairway finder locked.",
+  wood3:"Big carry, smooth tempo.",
+  iron5:"Smart layup. Plotting the path.",
+  iron6:"Thread the needle time.",
+  iron8:"Cozy swing incoming.",
+  pw:"Feather it in.",
+  lw60:"Float and land soft.",
+  putter:"Walk it in."
+};
+const REMARKS = {
+  fairway:[
+    "Center-cut. Smooth as butter.",
+    "Stripe show. Keep strolling.",
+    "Box office swing. We’re moving."
+  ],
+  rough:[
+    "Fluffy lie. We’ll handle it.",
+    "Bit leafy. Still very playable.",
+    "Grass is longer, vibes still high."
+  ],
+  trees:[
+    "Pine-scented detour. Creative golf unlocked.",
+    "Found a window with your name on it.",
+    "Forest networking session. We’re fine."
+  ],
+  sand:[
+    "Beach break. Sunscreen optional.",
+    "Bunker? More like sandbox for adults.",
+    "Splash of sand. Up and down time."
+  ],
+  water:[
+    "Hydrated the ball. Happens to legends.",
+    "That one swims. Next one flies.",
+    "Quick rinse. Reset and go."
+  ],
+  green:[
+    "On the dance floor. Lead the waltz.",
+    "Showtime. Eyes on the cup.",
+    "Lovely pace. Let’s tidy up."
+  ],
+  cup:[
+    "Walked it in. Chef’s kiss.",
+    "Dead center. That’ll play.",
+    "Called it and delivered."
+  ]
+};
 
 /* ===== State ===== */
 const STATE={ distYds:409,onGreen:false,distFt:0, shots:0,penalties:0,finished:false,pickedUp:false, path:[{x:0.05,y:0.60}], _history:[] };
@@ -105,13 +226,13 @@ function sceneTitle(){
     <div class="card stack" style="padding:22px;max-width:900px">
       <div class="badge">Bogey Hound · 18th · 409 yds</div>
       <h1>The sun is down,<br/>the vibes are up.<br/>Let’s walk it in.</h1>
-      <p class="small">Power first. Angle second. Auto-hit. Pick up anytime.</p>
+      <p class="small">Power first. Angle second on full shots. Putts are single tap.</p>
       <div class="row"><button id="start">Start</button><button class="secondary" id="lb">Leaderboard</button></div>
     </div>`;
   $("#start").onclick=()=>{ resetState(); sceneClubSelect(); };
   $("#lb").onclick=sceneLeaderboard;
 }
-const LB_KEY="bh_walkin_lb_v6";
+const LB_KEY="bh_walkin_lb_v7";
 function loadLB(){ try{return JSON.parse(localStorage.getItem(LB_KEY)||"[]")}catch(e){return[]} }
 function saveLB(i,s,tag){ const lb=loadLB(); lb.push({i,s,tag,t:Date.now()}); lb.sort((a,b)=>a.s-b.s||a.t-b.t); localStorage.setItem(LB_KEY,JSON.stringify(lb.slice(0,10))); }
 function sceneLeaderboard(){
@@ -144,13 +265,13 @@ function drawMini(canvas, zoomGreen=false){
   // Fairway
   ctx.fillStyle=getCSS('--fair'); roundRect(ctx, bb.width*0.06, bb.height*0.40, bb.width*0.88, bb.height*0.32, 26, true);
 
-  // Pines up the left/top ≈ first 300y (300/409 ≈ 0.73 of fairway run)
+  // Pines up the left/top
   const pEndX = bb.width*(0.06 + 0.88*0.73);
   const topY = bb.height*0.40;
   ctx.fillStyle=getCSS('--tree');
   for(let x=bb.width*0.06; x<pEndX; x+=18){ drawPine(ctx, x, topY-6, 14, 22); }
 
-  // Water starts earlier ~200y (200/409 ≈ 0.49 of fairway run)
+  // Water
   const wStartX = bb.width*(0.06 + 0.88*0.49);
   ctx.fillStyle=getCSS('--water');
   ctx.beginPath();
@@ -160,18 +281,14 @@ function drawMini(canvas, zoomGreen=false){
   ctx.lineTo(wStartX, bb.height*0.96);
   ctx.closePath(); ctx.fill();
 
-  // Fairway bunker ~350y mid-left (350/409 ≈ 0.86 run)
+  // Fairway bunker
   const bx = bb.width*(0.06 + 0.88*(350/409));
   const by = bb.height*0.48;
   ctx.fillStyle=getCSS('--sand');
   ctx.beginPath(); ctx.ellipse(bx, by, bb.width*0.035, bb.height*0.04, 0, 0, Math.PI*2); ctx.fill();
 
-  // Sand short-left of green
+  // Green + flag
   const greenCx = bb.width*0.90, greenCy = bb.height*0.56, greenRx = bb.width*0.08, greenRy = bb.height*0.06;
-  ctx.fillStyle=getCSS('--sand'); ctx.beginPath();
-  ctx.ellipse(greenCx - greenRx*0.60, greenCy+greenRy*0.10, greenRx*0.38, greenRy*0.26, 0, 0, Math.PI*2); ctx.fill();
-
-  // Green (flag only)
   ctx.fillStyle="#2f7a63"; ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
   const holeX = greenCx+greenRx*0.28, holeY = greenCy;
   ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
@@ -233,7 +350,7 @@ function sceneClubSelect(){
       <div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>
     </div>
     <div class="row" id="clubRow"></div>
-    <div class="small">Tip: Power, then angle. Click the meter or press Space/Enter to lock.</div>
+    <div class="small">Tip: Power, then angle on full shots. On the green, it’s one tap.</div>
   `;
   wrap.appendChild(card);
 
@@ -246,33 +363,38 @@ function sceneClubSelect(){
       <div class="small">${data.copy}</div>
       <div class="row"><div class="pill">Max ${STATE.onGreen?Math.round(data.max)+" ft":Math.round(data.max)+" yds"}</div><div class="pill">Perfect ~${Math.round(data.perf*100)}%</div></div>
       <button>Use ${data.name}</button>`;
-    $("button",c).onclick=()=>sceneSwingPowerFirst(key,data);
+    $("button",c).onclick=async()=>{
+      const msg = CLUB_REASSURE[data.id] || "Good swing. Let’s go.";
+      await typeToast(msg, 20, 600);
+      sceneSwingPowerFirst(key,data);
+    };
     row.appendChild(c);
   });
 }
 
-/* ===== Swing: POWER → ANGLE (auto-hit) ===== */
+/* ===== Swing: POWER → ANGLE (auto-hit ; putts = single tap) ===== */
 function sceneSwingPowerFirst(key, club){
   scene.innerHTML="";
   const wrap=document.createElement("div"); wrap.className="stack"; wrap.style.maxWidth="960px";
 
   const mini=document.createElement("div"); mini.className="mini"; mini.innerHTML=`<canvas id="mini"></canvas>`;
   wrap.appendChild(mini); scene.appendChild(wrap);
-  drawMini($("#mini"), STATE.onGreen);
+  drawMini($("#mini"), STATE.onGreen); // zooms on green
 
   const distLabel = STATE.onGreen ? `${Math.round(STATE.distFt)} ft` : `${Math.round(STATE.distYds)} yds`;
   const header=document.createElement("div"); header.className="hud";
-  header.innerHTML=`<div class="pill">1/2 – POWER · ${club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
+  header.innerHTML=`<div class="pill">1/1${STATE.onGreen?"":" of 2"} – POWER · ${club.name}</div><div class="pill">Distance: ${distLabel}</div><div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>`;
   wrap.appendChild(header);
 
-  // POWER meter (animated + ideal band + numeric only)
+  // POWER meter
   const box=document.createElement("div"); box.className="meter";
   box.innerHTML=`<canvas id="power"></canvas><div class="overlay"><div class="readout" id="powLabel">0</div></div>`;
   wrap.appendChild(box);
 
   const ctrls=document.createElement("div"); ctrls.className="row";
+  const angleStep = !(STATE.onGreen || club.kind==="putt");
   ctrls.innerHTML=`<button class="secondary" id="back">Back</button><button id="toggleP">Pause</button><button id="lockP" class="danger">Lock Power</button>`;
-  wrap.appendChild(ctrls);  /* FIXED: no more typo */
+  wrap.appendChild(ctrls);
 
   $("#back").onclick=sceneClubSelect;
 
@@ -284,12 +406,24 @@ function sceneSwingPowerFirst(key, club){
   const spdP=club.spdP;
 
   function requiredPower(){
-    if(STATE.onGreen){ return Math.min(1, Math.max(1,STATE.distFt)/club.max); }
-    let lie=1; const prev=lastOutcome(); if(prev==="trees") lie=0.5; else if(prev==="roughL"||prev==="roughR"||prev==="sand") lie=0.9;
+    if(STATE.onGreen){ return clamp(STATE.distFt / club.max, 0, 1); }
+    let lie=1; const prev=lastOutcome();
+    if(prev===OUT.TREES) lie=0.5; else if(prev===OUT.ROUGH_L||prev===OUT.ROUGH_R||prev===OUT.SAND) lie=0.9;
     const needed=Math.max(1,STATE.distYds), effMax=club.max*lie;
     return Math.min(1, needed/Math.max(1,effMax));
   }
-  function idealBandWidth(){ return STATE.onGreen ? (STATE.distFt<=8?0.50:STATE.distFt<=15?0.38:STATE.distFt<=30?0.30:0.24) : (club.kind==="safe"?0.34:0.18); }
+  function idealBandWidth(){
+    if(STATE.onGreen){
+      const ft = STATE.distFt;
+      if(ft<=6)  return 0.55;
+      if(ft<=12) return 0.42;
+      if(ft<=20) return 0.34;
+      if(ft<=30) return 0.28;
+      if(ft<=50) return 0.23;
+      return 0.20;
+    }
+    return (club.kind==="safe"?0.34:0.18);
+  }
 
   function drawPower(){
     const bb=pCVS.getBoundingClientRect();
@@ -312,7 +446,16 @@ function sceneSwingPowerFirst(key, club){
   $("#toggleP").onclick=()=>{ paused=!paused; $("#toggleP").textContent=paused?"Resume":"Pause"; };
   window.addEventListener("keydown", e=>{ if(e.code==="Space"){ e.preventDefault(); lockPower(cursorP);} });
 
-  function lockPower(val){ cancelAnimationFrame(raf); sceneSwingAngleSecond(key, club, clamp(val,0,1)); }
+  function lockPower(val){
+    cancelAnimationFrame(raf);
+    const p = clamp(val,0,1);
+    if(angleStep){ sceneSwingAngleSecond(key, club, p); }
+    else{
+      // Single-tap putt: feed ideal angle internally
+      const ideal = idealAngleCenter(true);
+      resolveSwing(club, ideal, p);
+    }
+  }
 }
 
 function sceneSwingAngleSecond(key, club, powerVal){
@@ -334,7 +477,7 @@ function sceneSwingAngleSecond(key, club, powerVal){
 
   const ctrls=document.createElement("div"); ctrls.className="row";
   ctrls.innerHTML=`<button class="secondary" id="back">Back</button><button id="toggleA">Pause</button><button id="lockA" class="danger">Lock Angle</button>`;
-  wrap.appendChild(ctrls);  /* FIXED: correct variable name */
+  wrap.appendChild(ctrls);
 
   $("#back").onclick=sceneClubSelect;
 
@@ -345,18 +488,29 @@ function sceneSwingAngleSecond(key, club, powerVal){
   let cursorA=0.5, dirA=1, raf, paused=false;
   const spdA=club.spdA;
 
+  const isPutting = STATE.onGreen || club.kind==="putt";
+  const idealC = idealAngleCenter(isPutting);
+  const windowNorm = isPutting ? puttLineWindow(STATE.distFt) : club.perf;
+
   function drawAngle(){
     const bb=aCVS.getBoundingClientRect();
     ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
     ctx.clearRect(0,0,bb.width,bb.height);
-    ctx.fillStyle="rgba(255,255,255,.09)"; ctx.fillRect(bb.width*.08, bb.height*.46, bb.width*.84, bb.height*.08);
-    const pw=bb.width*.84*club.perf; const px=bb.width*.08 + bb.width*.84*0.5 - pw/2;
-    ctx.fillStyle="rgba(212,61,61,.32)"; ctx.fillRect(px, bb.height*.46, pw, bb.height*.08);
-    if(club.anglePenalty>0){
+    // track
+    ctx.fillStyle="rgba(255,255,255,.09)";
+    ctx.fillRect(bb.width*.08, bb.height*.46, bb.width*.84, bb.height*.08);
+    // ideal band (shifted toward hole)
+    const pw = bb.width*.84 * windowNorm;
+    const px = bb.width*.08 + bb.width*.84*idealC - pw/2;
+    ctx.fillStyle="rgba(212,61,61,.32)";
+    ctx.fillRect(px, bb.height*.46, pw, bb.height*.08);
+    // danger edges for non-putts
+    if(!isPutting && club.anglePenalty>0){
       ctx.fillStyle="rgba(255,255,255,.16)";
       ctx.fillRect(bb.width*.08, bb.height*.46, bb.width*.84*club.anglePenalty, bb.height*.08);
       ctx.fillRect(bb.width*(.92 - .84*club.anglePenalty), bb.height*.46, bb.width*.84*club.anglePenalty, bb.height*.08);
     }
+    // cursor
     const cx = bb.width*.08 + cursorA*bb.width*.84;
     ctx.fillStyle="#fff"; ctx.fillRect(cx-10, bb.height*.42, 20, bb.height*.16);
   }
@@ -368,36 +522,107 @@ function sceneSwingAngleSecond(key, club, powerVal){
   $("#toggleA").onclick=()=>{ paused=!paused; $("#toggleA").textContent=paused?"Resume":"Pause"; };
   window.addEventListener("keydown", e=>{ if(e.code==="Enter"){ e.preventDefault(); lockAngle(cursorA);} });
 
-  function lockAngle(val){ cancelAnimationFrame(raf); resolveSwing(club, clamp(val,0,1), powerVal); } // AUTO-HIT
+  function lockAngle(val){
+    cancelAnimationFrame(raf);
+    STATE._puttIdealCenter = idealC;
+    STATE._puttWindowNorm  = windowNorm;
+    resolveSwing(club, clamp(val,0,1), powerVal);
+  }
 }
 
-/* ===== Outcome logic (with bunker + earlier water) ===== */
+/* ===== Outcome logic + animations ===== */
 const OUT={ TREES:"trees", ROUGH_L:"roughL", FAIRWAY:"fairway", ROUGH_R:"roughR", WATER:"water", SAND:"sand", GREEN:"green", CUP:"cup" };
 function lastOutcome(){ const h=STATE._history; return h.length? h[h.length-1].outcome : null; }
 
-function resolveSwing(club, angle, power){
+function computeToByCarry(from, progress, lateral){
+  return {
+    x: clamp(from.x + progress*0.82, 0.04, 0.97),
+    y: clamp(from.y + lateral*0.60, 0.18, 0.82)
+  };
+}
+function computeToTowardHole(from, frac){
+  return { x: lerp(from.x, HOLE.x, frac), y: lerp(from.y, HOLE.y, frac) };
+}
+
+async function animateArcOnMini(from, to, isPutt, clubId){
+  const cv=$("#mini"); if(!cv) return;
+  const dpr=Math.max(1,Math.floor(window.devicePixelRatio||1));
+  const bb=cv.getBoundingClientRect(); const width=bb.width; const height=bb.height;
+  // duration
+  const dist = Math.hypot((to.x-from.x),(to.y-from.y)); // normalized
+  let dur = isPutt ? Math.max(PACE.puttFlightMin, PACE.flightBase*0.7 + PACE.flightPerUnit*dist*0.5)
+                   : (PACE.flightBase + PACE.flightPerUnit*dist);
+  // arc height (normalized)
+  const loft = loftFactor(clubId);
+  const arc = isPutt ? 0.00 : clamp(loft * Math.max(0.12, dist*0.6), 0.05, 0.28);
+
+  const start = performance.now();
+  const idx = STATE.path.length-1;           // last point will be animated
+  const orig = {x:STATE.path[idx].x, y:STATE.path[idx].y};
+  function bezier(t,a,b,c){ return (1-t)*(1-t)*a + 2*(1-t)*t*b + t*t*c; }
+
+  while(true){
+    const now=performance.now();
+    let t = clamp((now-start)/dur, 0, 1);
+    // Ease in-out
+    t = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+
+    const midx = (from.x+to.x)/2, midy = (from.y+to.y)/2 - arc;
+    const cx = bezier(t, from.x, midx, to.x);
+    const cy = bezier(t, from.y, midy, to.y);
+
+    STATE.path[idx] = {x:cx, y:cy};
+    drawMini(cv, STATE.onGreen); // respect zoom on green
+    if((now-start)>=dur) break;
+    await sleep(16);
+  }
+  STATE.path[idx] = {x:to.x, y:to.y};
+  drawMini(cv, STATE.onGreen);
+}
+
+async function resolveSwing(club, angle, power){
   STATE.shots++;
 
-  // Putting
+  // ===== Putting: single-tap power =====
   if(club.kind==="putt" || STATE.onGreen){
     STATE.onGreen=true;
-    const target = Math.max(1, STATE.distFt);
-    const hitFt = clamp(Math.round(power*club.max), 0, club.max);
-    let tol = target<=6?4 : target<=12?3.5 : target<=20?3 : target<=40?2.5 : 2;
-    if(Math.abs(hitFt - target) <= tol){
-      STATE.distFt=0; pushPathToCup(); pushHistory(OUT.CUP, club.name); SFX.cup.play(); return finishRound();
+
+    const target = Math.max(1, STATE.distFt || 0);        // feet to hole
+    const hitFt  = clamp(power*club.max, 0, club.max);    // how far you sent it
+    const tolFt  = puttPowerTolerance(target);
+
+    // Only pace matters (single tap). Smooth and intuitive.
+    const qPower = clamp(1 - Math.abs(hitFt - target)/tolFt, 0, 1);
+    const baseP  = pgaMakeProb(target);
+    const pMake  = clamp(baseP * qPower, 0, 1);
+    const made   = Math.random() < pMake;
+
+    const from = STATE.path[STATE.path.length-1];
+    // Where the roll ends (for made: the cup; for miss: toward the cup by fraction)
+    if(made){
+      // Animate to cup
+      STATE.path.push({x:from.x, y:from.y});
+      await animateArcOnMini(from, {x:HOLE.x,y:HOLE.y}, true, 'putter');
+      pushHistory(OUT.CUP, club.name); SFX.cup.play();
+      await typeToast(choice(REMARKS.cup), 18, 700);
+      return finishRound();
     } else {
-      const remaining = Math.max(1, target - hitFt);
-      const frac = Math.min(0.98, hitFt/target);
-      pushPathTowardHole(frac);
-      STATE.distFt = remaining;
+      const frac = clamp(hitFt / Math.max(1,target), 0.05, 0.98);
+      const to = computeToTowardHole(from, frac);
+      STATE.path.push({x:from.x, y:from.y});
+      await animateArcOnMini(from, to, true, 'putter');
+
+      // Remaining leave with a little wiggle so misses look natural
+      const leave = Math.max(1, Math.abs(hitFt - target) + 1.2);
+      STATE.distFt = leave;
       pushHistory(OUT.GREEN, club.name);
-      showToast(choice(COMMENTARY.green));
+      await typeToast(choice(REMARKS.green), 18, 700);
+      await sleep(PACE.betweenShots);
       return sceneClubSelect();
     }
   }
 
-  // Full shot
+  // ===== Full shot =====
   let lie=1; const prev=lastOutcome();
   if(prev===OUT.TREES) lie=0.5;
   else if(prev===OUT.ROUGH_L||prev===OUT.ROUGH_R||prev===OUT.SAND) lie=0.9;
@@ -411,21 +636,20 @@ function resolveSwing(club, angle, power){
   let outcome = OUT.FAIRWAY;
 
   // Hazards thresholds from tee:
-  // Trees active once remaining >= 409-300 = 109y; Water active once remaining >= 409-200 = 209y
   const TREES_ACTIVE = before >= 109;
   const WATER_ACTIVE = before >= 209;
 
   if(TREES_ACTIVE && (angle < club.anglePenalty) && lateral<0){ outcome = OUT.TREES; }
   if(WATER_ACTIVE && (angle > 1 - club.anglePenalty) && lateral>0){ outcome = OUT.WATER; }
 
-  // Fairway bunker logic (~350y from tee => ~59y remaining). Catch shots that finish near 40–80y and aimed left-ish.
+  // Fairway bunker logic
   if(outcome===OUT.FAIRWAY && after<=80 && after>=40 && lateral < -0.08){
     outcome = OUT.SAND;
   }
 
-  // Near green classification if still fairway
+  // Near green classification
   if(after<=60 && outcome===OUT.FAIRWAY){
-    if(lateral<-0.10) outcome=OUT.SAND;             // short-left sand
+    if(lateral<-0.10) outcome=OUT.SAND;
     else if(Math.abs(lateral)<=0.18) outcome=OUT.GREEN;
     else outcome=(lateral<0)? OUT.ROUGH_L : OUT.ROUGH_R;
   } else if(outcome===OUT.FAIRWAY){
@@ -434,48 +658,43 @@ function resolveSwing(club, angle, power){
   }
 
   if(outcome===OUT.WATER){
-    STATE.penalties++; showToast(choice(COMMENTARY.water)); SFX.splash.play();
+    STATE.penalties++; SFX.splash.play();
     outcome=OUT.ROUGH_R; // drop right rough
   }
 
+  // Update distances
   if(outcome===OUT.GREEN){
     STATE.onGreen=true; STATE.distFt=Math.max(3, Math.round(after*3));
   } else {
     STATE.onGreen=false; STATE.distYds=Math.max(1, after);
   }
 
-  pushPathByCarry(carry/before, lateral);
+  // Compute target point, animate along an arc, then remark and continue
+  const from = STATE.path[STATE.path.length-1];
+  const to   = computeToByCarry(from, carry/before, lateral);
+  STATE.path.push({x:from.x, y:from.y});                              // add animated point
+  await animateArcOnMini(from, to, false, club.id);
 
   let line="";
-  if(outcome===OUT.FAIRWAY) line=choice(COMMENTARY.fairway);
-  else if(outcome===OUT.ROUGH_L||outcome===OUT.ROUGH_R) line=choice(COMMENTARY.rough);
-  else if(outcome===OUT.TREES) line=choice(COMMENTARY.trees);
-  else if(outcome===OUT.SAND) line=choice(COMMENTARY.sand);
-  else if(outcome===OUT.GREEN) line=choice(COMMENTARY.green);
+  if(outcome===OUT.FAIRWAY) line=choice(REMARKS.fairway);
+  else if(outcome===OUT.ROUGH_L||outcome===OUT.ROUGH_R) line=choice(REMARKS.rough);
+  else if(outcome===OUT.TREES) line=choice(REMARKS.trees);
+  else if(outcome===OUT.SAND) line=choice(REMARKS.sand);
+  else if(outcome===OUT.GREEN) line=choice(REMARKS.green);
+  else line="Nice move. Keep walking.";
 
   pushHistory(outcome, club.name);
-  if(line) showToast(line);
+  await typeToast(line, 18, 700);
+  await sleep(PACE.betweenShots);
   sceneClubSelect();
 }
 
 /* ===== Path & History ===== */
-function pushPathByCarry(progress,lateral){
-  const last=STATE.path[STATE.path.length-1];
-  const newX = clamp(last.x + progress*0.82, 0.04, 0.97);
-  const newY = clamp(last.y + lateral*0.60, 0.18, 0.82);
-  STATE.path.push({x:newX, y:newY});
-}
-function pushPathTowardHole(frac){
-  const last=STATE.path[STATE.path.length-1];
-  const hole={x:0.97,y:0.56};
-  STATE.path.push({x:lerp(last.x,hole.x,frac), y:lerp(last.y,hole.y,frac)});
-}
-function pushPathToCup(){ STATE.path.push({x:0.97,y:0.56}); }
 function pushHistory(outcome,club){ STATE._history.push({outcome,club,shots:STATE.shots,pen:STATE.penalties,onGreen:STATE.onGreen,distYds:STATE.distYds,distFt:STATE.distFt}); }
 
 /* ===== Finish & Pick-up ===== */
 function finishRound(){ const strokes=STATE.shots+STATE.penalties; finishScreen(strokes, null); }
-function finishPickup(){ const par=4, minScore=par+2; STATE.pickedUp=true; const strokes=Math.max(STATE.shots+STATE.penalties, minScore); finishScreen(strokes, "Picked up"); }
+async function finishPickup(){ const par=4, minScore=par+2; STATE.pickedUp=true; const strokes=Math.max(STATE.shots+STATE.penalties, minScore); await typeToast("Pocket the ball. Fresh start.",18,700); finishScreen(strokes, "Picked up"); }
 function finishScreen(strokes, tag){
   STATE.finished=true; const par=4, diff=strokes-par;
   const label = tag?tag:(diff<=-2?"Eagle":diff===-1?"Birdie":diff===0?"Par":diff===1?"Bogey":"+ "+diff);
@@ -506,3 +725,4 @@ sceneTitle();
 </script>
 </body>
 </html>
+
