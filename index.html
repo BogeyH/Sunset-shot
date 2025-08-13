@@ -14,7 +14,7 @@
 html,body{height:100%;margin:0;background:var(--navy);color:var(--cream);
   font-family:"Space Grotesk",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;overflow:hidden}
 
-/* Hero background image (replace src if you want) */
+/* Fullscreen hero image */
 #heroBG{position:fixed; inset:0; object-fit:cover; width:100%; height:100%; z-index:-2}
 
 /* Bottom course map */
@@ -33,7 +33,7 @@ button{font:600 16px "Space Grotesk";padding:12px 16px;border-radius:14px;border
 button.secondary{background:transparent;color:var(--cream);border:2px solid rgba(253,240,213,.5)}
 button.danger{background:#f25757;color:white}
 
-/* Main scene (above mini) */
+/* Main scene */
 #scene{position:fixed; inset:0 0 220px 0; padding:16px; overflow:auto; z-index:2}
 
 /* Top typed header */
@@ -120,6 +120,17 @@ async function typeRemark(txt){
 /* ===== Gameplay constants ===== */
 const HOLE = { x:0.97, y:0.56 };
 
+/* Hole pulse graphic (mini-map rings) */
+let HOLE_PULSE = {active:false,start:0,dur:1200};
+function triggerHolePulse(){
+  HOLE_PULSE.active=true; HOLE_PULSE.start=performance.now();
+  const tick=()=>{ if(!HOLE_PULSE.active) return; drawMini(miniCanvas, true);
+    if(performance.now()-HOLE_PULSE.start < HOLE_PULSE.dur) requestAnimationFrame(tick);
+    else HOLE_PULSE.active=false;
+  };
+  requestAnimationFrame(tick);
+}
+
 function loftFactor(clubId){
   return { driver:0.15, wood3:0.22, drivingIr:0.26, iron5:0.35, iron6:0.44, iron8:0.58, pw:0.66, lw60:0.78, putter:0.02 }[clubId] ?? 0.30;
 }
@@ -146,13 +157,13 @@ const STATE={ distYds:409,onGreen:false,distFt:0, shots:0,penalties:0,finished:f
 const CLUBS={
   driver:{id:"driver",name:"The Big Dog",kind:"aggr",max:260,perf:0.10,anglePenalty:0.20,spdA:0.010,spdP:0.010},
   drivingIr:{id:"drivingIr",name:"The Fairway Finder",kind:"safe",max:210,perf:0.30,anglePenalty:0.01,spdA:0.006,spdP:0.006},
-  wood3:{id:"wood3",name:"The Long Shot",kind:"aggr",max:235,perf:0.12,anglePenalty:0.18,spdA:0.009,spdP:0.009},
-  iron5:{id:"iron5",name:"The Layup",kind:"safe",max:185,perf:0.32,anglePenalty:0.01,spdA:0.006,spdP:0.006},
+  wood3:{id:"wood3",name:"The Long Shot",kind:"aggr",max:220,perf:0.12,anglePenalty:0.18,spdA:0.009,spdP:0.009}, /* toned down */
+  iron5:{id:"iron5",name:"The Layup",kind:"safe",max:175,perf:0.32,anglePenalty:0.01,spdA:0.006,spdP:0.006},    /* toned down */
   iron6:{id:"iron6",name:"The Nudge",kind:"aggr",max:165,perf:0.14,anglePenalty:0.16,spdA:0.008,spdP:0.008},
   iron8:{id:"iron8",name:"The Cozy One",kind:"safe",max:125,perf:0.34,anglePenalty:0.01,spdA:0.005,spdP:0.005},
   pw:{id:"pw",name:"The Flighted Wedge",kind:"aggr",max:95,perf:0.16,anglePenalty:0.14,spdA:0.008,spdP:0.007},
   lw60:{id:"lw60",name:"The Float",kind:"safe",max:70,perf:0.36,anglePenalty:0.01,spdA:0.005,spdP:0.005},
-  putter:{id:"putter",name:"Putter",kind:"putt",max:40,perf:0.70,anglePenalty:0,spdA:0,spdP:0.003} // slower meter on green
+  putter:{id:"putter",name:"Putter",kind:"putt",max:40,perf:0.70,anglePenalty:0,spdA:0,spdP:0.003}
 };
 
 const CLUB_REASSURE = {
@@ -184,7 +195,7 @@ $("#btnLB").onclick=sceneLeaderboard;
 $("#btnStart").onclick=async ()=>{
   $("#startOverlay").style.display="none";
   miniWrap.style.display="block";
-  pickUp.style.display="none"; // enabled only after first shot
+  pickUp.style.display="none"; // only after first shot
   await typeHeaderLines(["Sun’s down.","Vibes are up.","Let’s walk it in."]);
   await sleep(300);
   resetState(); sceneClubSelect();
@@ -210,20 +221,22 @@ function drawMini(canvas, zoomGreen=false){
   ctx.fillStyle=getCSS('--tree');
   for(let x=bb.width*0.06; x<pEndX; x+=18){ drawPine(ctx, x, topY-6, 14, 22); }
 
-  // --- Natural water shape (bottom-right coastline with coves) ---
-  const startX = bb.width*0.66, baseY = bb.height*0.74;
+  // --- Water: right-side triangle that grows near green + wraps behind green ---
+  // Start around 100 yds from the hole (309/409 of the fairway run from tee)
+  const startFrac = 309/409; // ≈0.756
+  const wStartX = bb.width*(0.06 + 0.88*startFrac);
+  const baseY = bb.height*0.78;
+
   ctx.fillStyle=getCSS('--water');
   ctx.beginPath();
-  ctx.moveTo(startX, baseY);
-  ctx.bezierCurveTo(bb.width*0.78, bb.height*0.86, bb.width*0.92, bb.height*0.76, bb.width*0.98, bb.height*0.80);
-  ctx.bezierCurveTo(bb.width*0.95, bb.height*0.88, bb.width*0.86, bb.height*0.92, bb.width*0.98, bb.height*0.96);
-  ctx.lineTo(bb.width, bb.height); ctx.lineTo(startX, bb.height); ctx.closePath(); ctx.fill();
-  // subtle shoreline highlight
-  ctx.strokeStyle="rgba(255,255,255,.18)"; ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(startX, baseY-2);
-  ctx.bezierCurveTo(bb.width*0.78, bb.height*0.84, bb.width*0.92, bb.height*0.74, bb.width*0.98, bb.height*0.78);
-  ctx.stroke();
+  ctx.moveTo(wStartX, baseY);                  // start wedge low right
+  ctx.lineTo(bb.width*0.98, bb.height*0.92);   // bottom-right
+  ctx.lineTo(bb.width*0.98, bb.height*0.30);   // right edge up
+  // wrap softly behind green
+  ctx.bezierCurveTo(bb.width*0.95, bb.height*0.48, bb.width*0.90, bb.height*0.52, bb.width*0.86, bb.height*0.56);
+  ctx.bezierCurveTo(bb.width*0.84, bb.height*0.58, bb.width*0.82, bb.height*0.60, bb.width*0.80, bb.height*0.62);
+  ctx.lineTo(wStartX, baseY);                  // close wedge
+  ctx.closePath(); ctx.fill();
 
   // Bunker
   const bx = bb.width*(0.06 + 0.88*(350/409));
@@ -231,7 +244,7 @@ function drawMini(canvas, zoomGreen=false){
   ctx.fillStyle=getCSS('--sand');
   ctx.beginPath(); ctx.ellipse(bx, by, bb.width*0.035, bb.height*0.04, 0, 0, Math.PI*2); ctx.fill();
 
-  // Green & flag
+  // Green & flag (store for pulse)
   const greenCx = bb.width*0.90, greenCy = bb.height*0.56, greenRx = bb.width*0.08, greenRy = bb.height*0.06;
   ctx.fillStyle="#2f7a63"; ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
   const holeX = greenCx+greenRx*0.28, holeY = greenCy;
@@ -241,22 +254,41 @@ function drawMini(canvas, zoomGreen=false){
   // Path
   const pts = STATE.path.map(p=>({x:lerp(0,bb.width,p.x), y:lerp(0,bb.height,p.y)}));
 
+  // Zoomed green when putting
   if(zoomGreen || STATE.onGreen){
     const pad=12, gx=greenCx-greenRx-pad, gy=greenCy-greenRy-pad, gw=greenRx*2+pad*2, gh=greenRy*2+pad*2;
     ctx.save(); ctx.clearRect(0,0,bb.width,bb.height); ctx.fillStyle="#0e2a26"; ctx.fillRect(0,0,bb.width,bb.height);
     const sx=bb.width/gw, sy=bb.height/gh, s=Math.min(sx,sy);
     ctx.translate(-gx*s,-gy*s); ctx.scale(s,s);
+    // green + flag again in zoom space
     ctx.fillStyle="#2f7a63"; ctx.beginPath(); ctx.ellipse(greenCx, greenCy, greenRx, greenRy, 0, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle="#fff"; ctx.lineWidth=2/s; ctx.beginPath(); ctx.moveTo(holeX, holeY); ctx.lineTo(holeX, holeY-24); ctx.stroke();
     ctx.fillStyle=getCSS('--red'); ctx.beginPath(); ctx.moveTo(holeX, holeY-24); ctx.lineTo(holeX+16, holeY-18); ctx.lineTo(holeX, holeY-12); ctx.closePath(); ctx.fill();
+    // path
     ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=2/s; ctx.beginPath(); pts.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
     const last=pts[pts.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4/s,0,Math.PI*2); ctx.fill();
+    // hole pulse (zoom space)
+    if(HOLE_PULSE.active){ drawHolePulse(ctx, holeX, holeY, 1/s); }
     ctx.restore(); return;
   }
 
   ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=2; ctx.beginPath();
   pts.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
   const last=pts[pts.length-1]; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(last.x,last.y,4,0,Math.PI*2); ctx.fill();
+
+  // hole pulse (full map)
+  if(HOLE_PULSE.active){ drawHolePulse(ctx, holeX, holeY, 1); }
+}
+function drawHolePulse(ctx, hx, hy, scale){
+  const t = clamp((performance.now()-HOLE_PULSE.start)/HOLE_PULSE.dur,0,1);
+  const r1 = lerp(2, 26/scale, t);
+  const r2 = lerp(8, 40/scale, t);
+  ctx.save();
+  ctx.strokeStyle=`rgba(255,255,255,${1-t})`;
+  ctx.lineWidth=2/scale;
+  ctx.beginPath(); ctx.arc(hx,hy,r1,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(hx,hy,r2,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
 }
 function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v); }
 function roundRect(ctx,x,y,w,h,r,fill=true){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); fill?ctx.fill():ctx.stroke(); }
@@ -270,7 +302,7 @@ function drawPine(ctx,cx,baseY,w,h){
 /* ===== UI scenes ===== */
 function resetState(){ STATE.distYds=409; STATE.onGreen=false; STATE.distFt=0; STATE.shots=0; STATE.penalties=0; STATE.finished=false; STATE.pickedUp=false; STATE.path=[{x:0.05,y:0.60}]; STATE._history=[]; drawMini(miniCanvas, false); }
 
-const LB_KEY="bh_walkin_lb_v9";
+const LB_KEY="bh_walkin_lb_v10";
 function loadLB(){ try{return JSON.parse(localStorage.getItem(LB_KEY)||"[]")}catch(e){return[]} }
 function saveLB(i,s,tag){ const lb=loadLB(); lb.push({i,s,tag,t:Date.now()}); lb.sort((a,b)=>a.s-b.s||a.t-b.t); localStorage.setItem(LB_KEY,JSON.stringify(lb.slice(0,10))); }
 
@@ -310,9 +342,8 @@ function sceneClubSelect(){
       <div class="pill">Distance: ${distLabel}</div>
       <div class="pill">Shots: ${STATE.shots} | Penalties: ${STATE.penalties}</div>
     </div>
-    <div id="clubRow" class="row"></div>
-    <div class="small">Tip: On the green it’s one tap. Off the green: power then angle.</div>`;
-  $("#scene").appendChild(wrap);
+    <div id="clubRow" class="row"></div>`;
+  $("#scene").appendChild(wrap);  // (tip removed)
 
   const row=$("#clubRow",wrap);
   clubOptionsByDist().forEach(({key,data})=>{
@@ -365,13 +396,13 @@ function sceneSwingPowerFirst(key, club){
   function idealBandWidth(){
     if(STATE.onGreen){
       const ft = STATE.distFt;
-      if(ft<=6)  return 0.65;
-      if(ft<=12) return 0.50;
-      if(ft<=20) return 0.42;
-      if(ft<=30) return 0.34;
-      return 0.28;
+      if(ft<=6)  return 0.50;
+      if(ft<=12) return 0.40;
+      if(ft<=20) return 0.33;
+      if(ft<=30) return 0.28;
+      return 0.24;
     }
-    return (club.kind==="safe"?0.34:0.18);
+    return (club.kind==="safe"?0.26:0.12); // narrower band
   }
   function drawPower(){
     const bb=pCVS.getBoundingClientRect();
@@ -398,11 +429,11 @@ function sceneSwingPowerFirst(key, club){
     cancelAnimationFrame(raf);
     const p = clamp(val,0,1);
     if(STATE.onGreen || club.kind==="putt"){ resolveSwing(club, 0.5, p); }     // single-tap putt
-    else { sceneSwingAngleSecond(key, club, p); }                              // go to angle step
+    else { sceneSwingAngleSecond(key, club, p); }                              // angle step
   }
 }
 
-function idealAngleCenter(){ // shift aim band toward hole based on lateral
+function idealAngleCenter(){
   const last = STATE.path[STATE.path.length-1];
   const dy = HOLE.y - last.y;
   return clamp(0.5 + clamp(dy*0.7, -0.30, 0.30), 0.10, 0.90);
@@ -430,7 +461,7 @@ function sceneSwingAngleSecond(key, club, powerVal){
   let cursorA=0.5, dirA=1, raf, paused=false;
   const spdA=club.spdA;
 
-  const idealC = idealAngleCenter();                   // << restored
+  const idealC = idealAngleCenter();
   const windowNorm = club.perf;
 
   function drawAngle(){
@@ -501,7 +532,7 @@ async function animateArcOnMini(from, to, isPutt, clubId){
 async function resolveSwing(club, angle, power){
   STATE.shots++;
 
-  // ===== Putting =====
+  // ===== Putting (always rolls toward flag) =====
   if(club.kind==="putt" || STATE.onGreen){
     STATE.onGreen=true;
 
@@ -510,25 +541,30 @@ async function resolveSwing(club, angle, power){
 
     const from = STATE.path[STATE.path.length-1];
 
-    if(puttAutoMake(hitFt, target) || Math.random() < pgaMakeProb(target)*0.25){
-      const to = {x:HOLE.x, y:HOLE.y};
-      STATE.path.push({x:from.x, y:from.y});
-      await animateArcOnMini(from, to, true, 'putter');
-      pushHistory(OUT.CUP, club.name); SFX.cup.play();
-      await typeRemark(choice(REMARKS.cup));
-      return finishRound();
-    } else {
-      const frac = clamp(hitFt / Math.max(1,target), 0.05, 0.98);
-      const to = computeToTowardHole(from, frac);
-      STATE.path.push({x:from.x, y:from.y});
-      await animateArcOnMini(from, to, true, 'putter');
+    // compute destination strictly along the vector to the hole
+    const fracToHole = clamp(hitFt / Math.max(1,target), 0.05, 1.2);
+    const toward = computeToTowardHole(from, Math.min(fracToHole, 0.98));
 
+    const drops = puttAutoMake(hitFt, target) || Math.random() < pgaMakeProb(target)*0.25;
+
+    if(drops){
+      // animate all the way to the cup
+      STATE.path.push({x:from.x, y:from.y});
+      await animateArcOnMini(from, {x:HOLE.x,y:HOLE.y}, true, 'putter');
+      triggerHolePulse(); SFX.cup.play();
+      pushHistory(OUT.CUP, club.name);
+      await sleep(500);
+      return finishHoleOutScene();
+    } else {
+      // miss but roll toward the cup
+      STATE.path.push({x:from.x, y:from.y});
+      await animateArcOnMini(from, toward, true, 'putter');
       const leave = Math.max(1, Math.abs(hitFt - target) + 1.0);
       STATE.distFt = leave;
       pushHistory(OUT.GREEN, club.name);
       await typeRemark(choice(REMARKS.green));
       await sleep(PACE.betweenShots);
-      if(STATE.shots>=1) pickUp.style.display="block";  // enable after first shot
+      if(STATE.shots>=1) pickUp.style.display="block";
       return sceneClubSelect();
     }
   }
@@ -584,37 +620,57 @@ async function resolveSwing(club, angle, power){
   pushHistory(outcome, club.name);
   await typeRemark(line);
   await sleep(PACE.betweenShots);
-  if(STATE.shots>=1) pickUp.style.display="block";  // enable after first shot
+  if(STATE.shots>=1) pickUp.style.display="block";
   sceneClubSelect();
 }
 
 /* ===== History & finish ===== */
 function pushHistory(outcome,club){ STATE._history.push({outcome,club,shots:STATE.shots,pen:STATE.penalties,onGreen:STATE.onGreen,distYds:STATE.distYds,distFt:STATE.distFt}); }
 
-function finishRound(){ const strokes=STATE.shots+STATE.penalties; finishScreen(strokes, null); }
-async function finishPickup(){ const par=4, minScore=par+2; STATE.pickedUp=true; const strokes=Math.max(STATE.shots+STATE.penalties, minScore); await typeRemark("Pocket the ball. Fresh start."); finishScreen(strokes, "Picked up"); }
-function finishScreen(strokes, tag){
-  STATE.finished=true; const par=4, diff=strokes-par;
-  const label = tag?tag:(diff<=-2?"Eagle":diff===-1?"Birdie":diff===0?"Par":diff===1?"Bogey":"+ "+diff);
+function playerTitle(){
+  const kinds = STATE._history.reduce((acc,h)=>{ const k=(CLUBS[h.club?.toLowerCase?.()]?.kind)||null; return acc; },{});
+  // count kinds via club ids we stored:
+  let aggr=0,safe=0,putts=0;
+  for(const h of STATE._history){
+    const id = Object.keys(CLUBS).find(k=>CLUBS[k].name===h.club) || "";
+    const kind = CLUBS[id]?.kind;
+    if(kind==="aggr") aggr++;
+    else if(kind==="safe") safe++;
+    else if(kind==="putt") putts++;
+  }
+  const style = aggr>safe ? "Shotmaker" : "Course Manager";
+  const roll  = putts<=1 ? "Closer" : (putts>=3 ? "Grinder" : "Steady Roller");
+  return `${style} · ${roll}`;
+}
+
+function finishHoleOutScene(){
+  const strokes=STATE.shots+STATE.penalties;
+  const par=4, diff=strokes-par;
+  const label = (diff<=-2?"Eagle":diff===-1?"Birdie":diff===0?"Par":diff===1?"Bogey":"+ "+diff);
+  const title = playerTitle();
   $("#scene").innerHTML=`
     <div id="typeHeader"></div>
-    <div class="card panel stack" style="padding:22px;max-width:900px;margin:20px auto">
-      <div class="pill">Final</div>
-      <h2 style="margin:0;font-family:'Libre Baskerville',serif">${strokes} • ${label}</h2>
-      <div class="row"><div class="pill">Shots: ${STATE.shots}</div><div class="pill">Penalties: ${STATE.penalties}</div></div>
-      <div class="row">
-        <button id="again">Restart</button>
+    <div class="card panel stack" style="padding:24px;max-width:900px;margin:24px auto;text-align:center">
+      <div class="pill">Holed Out</div>
+      <h2 style="margin:0 0 6px 0;font-family:'Libre Baskerville',serif">Congrats! ${label}</h2>
+      <div class="small">Walker Type: <b>${title}</b></div>
+      <div class="row" style="justify-content:center;margin-top:10px">
+        <div class="pill">Final: ${strokes}</div>
+        <div class="pill">Shots: ${STATE.shots}</div>
+        <div class="pill">Penalties: ${STATE.penalties}</div>
+      </div>
+      <div class="row" style="justify-content:center;margin-top:12px">
+        <button id="again">Play Again</button>
         <button class="secondary" id="store">Visit the store</button>
         <button id="lb" class="secondary">Leaderboard</button>
       </div>
-      <div class="row">
+      <div class="row" style="justify-content:center">
         <input id="init" maxlength="3" placeholder="ABC" style="padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:var(--cream)">
         <button id="save">Save Score</button>
       </div>
       <div id="msg" class="small"></div>
     </div>`;
   $("#again").onclick=async ()=>{
-    // full reset + intro typing again; pickup hidden until first shot
     pickUp.style.display="none";
     $("#scene").innerHTML=`<div id="typeHeader"></div>`;
     await typeHeaderLines(["Sun’s down.","Vibes are up.","Let’s walk it in."]);
@@ -622,11 +678,11 @@ function finishScreen(strokes, tag){
   };
   $("#store").onclick=()=>location.href="https://bogeyhound.com";
   $("#lb").onclick=sceneLeaderboard;
-  $("#save").onclick=()=>{ const i=($("#init").value||"__").toUpperCase().replace(/[^A-Z]/g,"").slice(0,3).padEnd(3,"_"); saveLB(i,strokes, tag||""); $("#msg").textContent="Saved."; };
+  $("#save").onclick=()=>{ const strokes=STATE.shots+STATE.penalties; const i=($("#init").value||"__").toUpperCase().replace(/[^A-Z]/g,"").slice(0,3).padEnd(3,"_"); saveLB(i,strokes, title); $("#msg").textContent="Saved."; };
 }
 
-/* ===== Utils ===== */
-function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v); }
+function finishRound(){ finishHoleOutScene(); } // route to the new scene
+async function finishPickup(){ const par=4, minScore=par+2; STATE.pickedUp=true; const strokes=Math.max(STATE.shots+STATE.penalties, minScore); $("#scene").innerHTML=`<div id="typeHeader"></div>`; await typeHeaderLines(["Sun’s down.","Vibes are up.","Let’s walk it in."]); resetState(); sceneClubSelect(); }
 
 /* ===== Boot ===== */
 drawMini(miniCanvas,false);
